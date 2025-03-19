@@ -38,26 +38,40 @@ export const en = {
     },
     faq: {
       title: "FAQ",
-      speed: {
-        question: "How to precisely control the scrolling speed?",
-        answer: "Multiple speed control options available: 1) Precise slider control, range 0.5-10; 2) Fine-tune with arrow keys, ±0.5 each; 3) Gesture control on touch devices; 4) Quick preset speed switching."
-      },
-      shortcuts: {
-        question: "What are the useful shortcuts?",
-        answer: "For improved efficiency, we offer rich shortcuts: Space-Play/Pause, Up/Down Arrows-Speed Control, Home-Reset Position, F-Toggle Fullscreen, ESC-Exit Fullscreen, Screen Click-Show/Hide Controls."
-      },
-      save: {
-        question: "How to save and manage scripts?",
-        answer: "Multiple safeguards provided: 1) Auto-save to prevent accidental loss; 2) Manual save to local file; 3) Cloud sync (coming soon); 4) History feature to view and restore recent scripts."
-      },
-      mirror: {
-        question: "How to use the mirror display feature?",
-        answer: "Three mirroring modes available: 1) Horizontal mirror-for standard prompter glass; 2) Vertical mirror-for special scenarios; 3) Dual mirror. Quick toggle in settings, shortcut support."
-      },
-      mobile: {
-        question: "How to get the best mobile experience?",
-        answer: "Mobile version specially optimized: 1) Responsive design for all screens; 2) Touch control with gestures; 3) Optimized layout for phones and tablets; 4) Auto rotation support."
-      }
+      items: [
+        {
+          q: "What is a web teleprompter?",
+          a: "A web teleprompter is a professional online tool that helps speakers, hosts, and content creators read scripts smoothly during speeches, live streams, or video recordings. It automatically scrolls text at a set speed, supports mirror display, and adapts to various teleprompter devices."
+        },
+        {
+          q: "Why use a teleprompter?",
+          a: "Using a teleprompter helps you: 1. Maintain eye contact, enhancing speech impact; 2. Control speech pace, increasing professionalism; 3. Reduce memory load, making delivery more natural; 4. Suitable for speeches, live streams, video recording, and more."
+        },
+        {
+          q: "How to get started?",
+          a: 'Getting started is simple: 1. Click "Get Started" to enter the editor; 2. Enter or import your script; 3. Click "Play" to begin. You can adjust text size, scroll speed, mirror display, and other settings to suit your needs.'
+        },
+        {
+          q: "How to adjust the scrolling speed?",
+          a: "You can adjust the speed in several ways: 1. Use the up/down arrow buttons in the control bar; 2. Use keyboard arrow keys; 3. Click the speed value to input directly. Speed range is 0.5-10, higher values mean faster scrolling."
+        },
+        {
+          q: "How to adjust progress during playback?",
+          a: "You can: 1. Directly drag the text content up/down; 2. Use or click the progress bar; 3. On PC, use mouse wheel for fine-tuning. Any adjustment during playback won't affect the playing state."
+        },
+        {
+          q: "How to use mirror mode?",
+          a: "In the control bar: 1. Click the horizontal mirror button for horizontal mirroring; 2. Click the vertical mirror button for vertical mirroring. Both mirror modes can be used simultaneously, suitable for different teleprompter displays."
+        },
+        {
+          q: "How to operate efficiently on mobile devices?",
+          a: "Mobile optimizations: 1. Slide up/down with finger to adjust progress; 2. Tap screen to show/hide controls; 3. Use pinch gesture to adjust font size; 4. Fullscreen mode for smoother operation. All control buttons are optimized for touch."
+        },
+        {
+          q: "How to save and import text?",
+          a: "In the edit page: 1. Click save button to store locally; 2. Click import to read TXT or MD files; 3. Click export to download current text; 4. Text is auto-saved, won't lose on page refresh."
+        }
+      ]
     },
     testimonials: {
       title: "User Feedback",
@@ -98,12 +112,25 @@ export const en = {
     clickScreen: "Click Screen: Show/Hide Controls",
   },
   shortcuts: {
-    title: "Shortcuts",
+    title: "Shortcuts & Controls",
     space: "Space: Play/Pause",
-    arrows: "↑/↓: Adjust Speed",
-    home: "Home: Reset",
-    f: "F: Fullscreen",
-    click: "Click: Show/Hide Controls",
+    arrows: "Arrow Keys: Adjust Speed",
+    home: "Home: Reset Position",
+    f: "F: Fullscreen Mode",
+    click: "Click Screen: Show/Hide Controls",
+    pc: {
+      title: "Desktop Controls:",
+      mouse: "Mouse Drag: Adjust Progress",
+      wheel: "Mouse Wheel: Fine-tune Position",
+      shortcuts: "Use Keyboard Shortcuts"
+    },
+    touch: {
+      title: "Touch Device Controls:",
+      drag: "Slide Up/Down: Adjust Progress",
+      tap: "Tap Screen: Show/Hide Controls",
+      pinch: "Pinch: Adjust Font Size",
+      controls: "Use On-screen Controls"
+    }
   },
   settings: {
     title: "Settings",

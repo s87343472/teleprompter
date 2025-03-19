@@ -62,6 +62,10 @@ export default function PrompterPage() {
   const [theme, setTheme] = useState<'light'>('light')
   const [touchStartY, setTouchStartY] = useState<number | null>(null)
   const [touchStartPosition, setTouchStartPosition] = useState<number | null>(null)
+  const [isDraggingText, setIsDraggingText] = useState<boolean>(false)
+  const [dragStartY, setDragStartY] = useState<number | null>(null)
+  const [dragStartPosition, setDragStartPosition] = useState<number | null>(null)
+  const [isLandscape, setIsLandscape] = useState<boolean>(false)
 
   const prompterRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -80,6 +84,15 @@ export default function PrompterPage() {
       marker: 'border-black/30',
     },
   }
+
+  // 强制使用亮色主题
+  useEffect(() => {
+    // 设置 body 背景色为白色
+    document.body.style.backgroundColor = '#ffffff'
+    return () => {
+      document.body.style.backgroundColor = ''
+    }
+  }, [])
 
   const trackEvent = (action: string, params: { [key: string]: any } = {}) => {
     if (typeof window !== 'undefined' && window.gtag) {
@@ -117,39 +130,32 @@ export default function PrompterPage() {
   // Animation loop for scrolling
   useEffect(() => {
     let lastTimestamp = 0
-    const FRAME_RATE = 60 // 限制帧率
-    const FRAME_INTERVAL = 1000 / FRAME_RATE
+    const FRAME_STEP = 1000 / 60 // 60fps
 
     const animate = (timestamp: number) => {
       if (!prompterRef.current || !containerRef.current) return
 
-      // 帧率控制
-      const elapsed = timestamp - lastTimestamp
-      if (elapsed < FRAME_INTERVAL) {
-        animationRef.current = requestAnimationFrame(animate)
-        return
+      if (lastTimestamp === 0) {
+        lastTimestamp = timestamp
       }
+
+      const deltaTime = timestamp - lastTimestamp
       lastTimestamp = timestamp
+
+      // 计算新位置
+      const newPosition = currentPosition + (speed * deltaTime) / 16
+      setCurrentPosition(newPosition)
 
       const containerHeight = containerRef.current.clientHeight
       const prompterHeight = prompterRef.current.scrollHeight
       const maxScroll = prompterHeight - containerHeight
-
-      // 使用 transform 代替 scrollTop，提供更流畅的动画
-      const newPosition = currentPosition + speed * (elapsed / 16) // 基于时间的平滑动画
-      setCurrentPosition(Math.min(newPosition, maxScroll))
 
       // 计算进度
       const progress = Math.min(100, (newPosition / maxScroll) * 100)
       setProgress(progress)
 
       // 应用变换
-      prompterRef.current.style.transform = `
-        translate3d(0, ${-newPosition}px, 0)
-        ${isMirrored ? "scaleX(-1)" : ""}
-        ${isVerticalMirrored ? "scaleY(-1)" : ""}
-        rotateX(10deg)
-      `
+      prompterRef.current.style.transform = `translateY(calc(33vh - ${newPosition}px))`
 
       // 到达底部时停止
       if (newPosition >= maxScroll) {
@@ -161,7 +167,7 @@ export default function PrompterPage() {
     }
 
     if (isPlaying) {
-      lastTimestamp = performance.now()
+      lastTimestamp = 0
       animationRef.current = requestAnimationFrame(animate)
     } else if (animationRef.current) {
       cancelAnimationFrame(animationRef.current)
@@ -245,10 +251,9 @@ export default function PrompterPage() {
     setCountdown(null)
     if (prompterRef.current) {
       prompterRef.current.style.transform = `
-        translate3d(0, 0, 0)
-        ${isMirrored ? "scaleX(-1)" : ""}
-        ${isVerticalMirrored ? "scaleY(-1)" : ""}
-        rotateX(10deg)
+        translateY(0)
+        ${isMirrored ? 'scaleX(-1)' : ''}
+        ${isVerticalMirrored ? 'scaleY(-1)' : ''}
       `
     }
   }
@@ -412,6 +417,82 @@ export default function PrompterPage() {
     }
   }, [currentPosition])
 
+  // 修改点击事件处理
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      // 如果点击的是控制条或其子元素，不处理点击事件
+      if (e.target instanceof Element && 
+          (e.target.closest('.controls-container') || 
+           e.target.closest('button'))) {
+        return
+      }
+      
+      if (isFullscreen) {
+        setIsControlsVisible(prev => !prev)
+      }
+    }
+
+    const container = containerRef.current
+    if (container) {
+      container.addEventListener('click', handleClick)
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener('click', handleClick)
+      }
+    }
+  }, [isFullscreen])
+
+  // 修改文本拖动功能
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.target instanceof HTMLButtonElement || 
+          e.target instanceof HTMLDivElement && e.target.closest('.controls-container')) {
+        return
+      }
+      setIsDraggingText(true)
+      setDragStartY(e.clientY)
+      setDragStartPosition(currentPosition)
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingText || dragStartY === null || dragStartPosition === null) return
+      
+      const deltaY = dragStartY - e.clientY
+      const newPosition = Math.max(0, dragStartPosition + deltaY)
+      setCurrentPosition(newPosition)
+
+      if (prompterRef.current && containerRef.current) {
+        const prompterHeight = prompterRef.current.scrollHeight
+        const containerHeight = containerRef.current.clientHeight
+        const maxScroll = prompterHeight - containerHeight
+        setProgress((newPosition / maxScroll) * 100)
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsDraggingText(false)
+      setDragStartY(null)
+      setDragStartPosition(null)
+    }
+
+    const container = containerRef.current
+    if (container) {
+      container.addEventListener('mousedown', handleMouseDown)
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener('mousedown', handleMouseDown)
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isDraggingText, dragStartY, dragStartPosition, currentPosition])
+
   // 优化触摸事件处理
   useEffect(() => {
     let initialTouchY = 0
@@ -419,11 +500,14 @@ export default function PrompterPage() {
     let lastTouchY = 0
     let velocity = 0
     let lastTimestamp = 0
+    let isTouching = false
 
     const handleTouchStart = (e: TouchEvent) => {
-      if (isPlaying) {
-        setIsPlaying(false)
+      if (e.target instanceof HTMLButtonElement || 
+          e.target instanceof HTMLDivElement && e.target.closest('.controls-container')) {
+        return
       }
+      isTouching = true
       initialTouchY = e.touches[0].clientY
       lastTouchY = initialTouchY
       initialPosition = currentPosition
@@ -432,12 +516,13 @@ export default function PrompterPage() {
     }
 
     const handleTouchMove = (e: TouchEvent) => {
+      if (!isTouching) return
       e.preventDefault()
+      
       const currentTouchY = e.touches[0].clientY
       const currentTimestamp = performance.now()
       const deltaTime = currentTimestamp - lastTimestamp
       
-      // 计算速度
       if (deltaTime > 0) {
         velocity = (lastTouchY - currentTouchY) / deltaTime
       }
@@ -446,21 +531,41 @@ export default function PrompterPage() {
       const newPosition = Math.max(0, initialPosition + deltaY)
       
       setCurrentPosition(newPosition)
+
+      if (prompterRef.current && containerRef.current) {
+        const prompterHeight = prompterRef.current.scrollHeight
+        const containerHeight = containerRef.current.clientHeight
+        const maxScroll = prompterHeight - containerHeight
+        setProgress((newPosition / maxScroll) * 100)
+      }
       
       lastTouchY = currentTouchY
       lastTimestamp = currentTimestamp
     }
 
     const handleTouchEnd = () => {
-      // 添加惯性滚动
+      if (!isTouching) return
+      isTouching = false
+      
       if (Math.abs(velocity) > 0.5) {
         let currentVelocity = velocity
         const decelerate = () => {
-          currentVelocity *= 0.95 // 减速因子
-          
-          if (Math.abs(currentVelocity) > 0.1) {
-            setCurrentPosition(prev => Math.max(0, prev + currentVelocity * 16))
-            requestAnimationFrame(decelerate)
+          if (!isTouching) {
+            currentVelocity *= 0.95
+            
+            if (Math.abs(currentVelocity) > 0.1) {
+              setCurrentPosition(prev => {
+                const newPos = Math.max(0, prev + currentVelocity * 16)
+                if (prompterRef.current && containerRef.current) {
+                  const prompterHeight = prompterRef.current.scrollHeight
+                  const containerHeight = containerRef.current.clientHeight
+                  const maxScroll = prompterHeight - containerHeight
+                  setProgress((newPos / maxScroll) * 100)
+                }
+                return newPos
+              })
+              requestAnimationFrame(decelerate)
+            }
           }
         }
         requestAnimationFrame(decelerate)
@@ -481,7 +586,7 @@ export default function PrompterPage() {
         container.removeEventListener('touchend', handleTouchEnd)
       }
     }
-  }, [currentPosition, isPlaying])
+  }, [currentPosition])
 
   // 添加镜像模式变更追踪
   useEffect(() => {
@@ -512,9 +617,30 @@ export default function PrompterPage() {
     })
   }, [textAlign])
 
+  // 添加横屏检测
+  useEffect(() => {
+    const checkOrientation = () => {
+      if (typeof window !== 'undefined') {
+        setIsLandscape(window.innerWidth > window.innerHeight)
+      }
+    }
+
+    checkOrientation()
+    window.addEventListener('resize', checkOrientation)
+    window.addEventListener('orientationchange', checkOrientation)
+
+    return () => {
+      window.removeEventListener('resize', checkOrientation)
+      window.removeEventListener('orientationchange', checkOrientation)
+    }
+  }, [])
+
   return (
     <div className="container mx-auto p-2 sm:p-4">
-      <Tabs defaultValue="edit" className="w-full">
+      <Tabs defaultValue="edit" className={cn(
+        "w-full",
+        isLandscape && isMobile && "hidden"
+      )}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="edit">{t('prompter.edit')}</TabsTrigger>
           <TabsTrigger value="prompter">{t('prompter.play')}</TabsTrigger>
@@ -540,28 +666,37 @@ export default function PrompterPage() {
             <Textarea
               value={script}
               onChange={(e) => setScript(e.target.value)}
-              className="min-h-[200px] sm:min-h-[300px]"
+              className="min-h-[200px] sm:min-h-[300px] font-mono whitespace-pre-wrap"
+              style={{
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                fontFamily: 'monospace',
+                backgroundColor: '#ffffff',
+                color: '#000000',
+              }}
               placeholder={t('prompter.placeholder')}
             />
           </div>
         </TabsContent>
 
-        <TabsContent value="prompter">
-          <div 
-            ref={containerRef} 
+        <TabsContent value="prompter" className={cn(
+          isLandscape && isMobile && "!mt-0 !block"
+        )}>
+          {/* Prompter container */}
+          <div
+            ref={containerRef}
             className={cn(
-              "relative h-[calc(100vh-10rem)] sm:h-[calc(100vh-12rem)] overflow-hidden bg-white touch-none",
-              themeStyles[theme].background,
-              isFullscreen ? "h-screen" : ""
+              "relative overflow-hidden touch-none bg-white",
+              isFullscreen ? "h-screen" : 
+              isLandscape && isMobile ? "h-screen" :
+              "h-[calc(100vh-8rem)] sm:h-[calc(100vh-10rem)]"
             )}
             style={{
-              perspective: "1000px",
-              perspectiveOrigin: "center center",
-              WebkitOverflowScrolling: "touch", // 添加 iOS 滚动优化
+              WebkitOverflowScrolling: "touch",
             }}
           >
             {countdown !== null ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center backdrop-blur-sm bg-white/80">
+              <div className="absolute inset-0 flex flex-col items-center justify-center backdrop-blur-sm bg-white/80 z-50">
                 <span className="text-4xl sm:text-6xl font-bold mb-4 text-black">{countdown}</span>
                 <div className="text-xs sm:text-sm text-center text-black">
                   <p>{t('countdown.preparing')}</p>
@@ -571,68 +706,138 @@ export default function PrompterPage() {
               </div>
             ) : (
               <>
+                {/* 提示条 - 始终显示 */}
+                <div className="absolute left-0 right-0 top-[33vh] h-16 bg-black/5 pointer-events-none z-10" />
+                <div className="absolute left-0 right-0 top-[33vh] border-t-2 border-black/30 pointer-events-none z-10" />
+
+                {/* 文本容器 */}
                 <div
                   ref={prompterRef}
                   className={cn(
-                    "absolute w-full transform-gpu will-change-transform",
+                    "absolute w-full whitespace-pre-wrap break-words",
                     textAlign === 'left' ? 'text-left' : textAlign === 'right' ? 'text-right' : 'text-center',
-                    "p-2 sm:p-4"
+                    "p-4 sm:p-6"
                   )}
                   style={{
                     fontSize: `${fontSize}px`,
                     lineHeight: lineHeight,
-                    transform: `
-                      translate3d(0, 0, 0)
-                      ${isMirrored ? "scaleX(-1)" : ""}
-                      ${isVerticalMirrored ? "scaleY(-1)" : ""}
-                      rotateX(10deg)
-                    `,
-                    transformOrigin: "center top",
-                    WebkitFontSmoothing: "antialiased",
+                    transform: 'translateY(33vh)',
+                    color: "#000000",
+                    backgroundColor: "#ffffff",
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-wrap",
+                    fontFamily: "system-ui, -apple-system, sans-serif",
                   }}
                 >
                   {script}
                 </div>
 
-                {/* Center marker and highlight zone */}
-                <div className="absolute left-0 right-0 top-[33vh] h-16 bg-black/5 pointer-events-none" />
-                <div className="absolute left-0 right-0 top-[33vh] border-t-2 border-black/30 pointer-events-none" />
-
-                {/* Controls */}
+                {/* 控制栏 */}
                 {(isControlsVisible || !isPlaying) && (
-                  <div className="absolute bottom-0 left-0 right-0 backdrop-blur-sm p-2 sm:p-4 border-t bg-white/90 border-gray-200">
-                    <div className="flex flex-wrap gap-2 sm:gap-4 items-center justify-between">
+                  <div className="controls-container absolute bottom-0 left-0 right-0 backdrop-blur-sm p-1 sm:p-2 border-t bg-white/90 border-gray-200 z-20">
+                    <div className="flex flex-wrap gap-1 sm:gap-2 items-center justify-between">
                       {/* Playback controls */}
                       <div className="flex gap-1 sm:gap-2">
-                        <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={togglePlay}>
-                          {isPlaying ? <Pause className="h-3 w-3 sm:h-4 sm:w-4" /> : <Play className="h-3 w-3 sm:h-4 sm:w-4" />}
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className={cn(
+                            "h-8 w-8 sm:h-10 sm:w-10",
+                            isMobile && "h-10 w-10"
+                          )}
+                          onClick={togglePlay}
+                        >
+                          {isPlaying ? 
+                            <Pause className={cn("h-3 w-3 sm:h-4 sm:w-4", isMobile && "h-4 w-4")} /> : 
+                            <Play className={cn("h-3 w-3 sm:h-4 sm:w-4", isMobile && "h-4 w-4")} />
+                          }
                         </Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={resetPrompter}>
-                          <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className={cn(
+                            "h-8 w-8 sm:h-10 sm:w-10",
+                            isMobile && "h-10 w-10"
+                          )}
+                          onClick={resetPrompter}
+                        >
+                          <RotateCcw className={cn("h-3 w-3 sm:h-4 sm:w-4", isMobile && "h-4 w-4")} />
                         </Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={toggleFullscreen}>
-                          {isFullscreen ? <Minimize className="h-3 w-3 sm:h-4 sm:w-4" /> : <Maximize className="h-3 w-3 sm:h-4 sm:w-4" />}
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className={cn(
+                            "h-8 w-8 sm:h-10 sm:w-10",
+                            isMobile && "h-10 w-10"
+                          )}
+                          onClick={toggleFullscreen}
+                        >
+                          {isFullscreen ? 
+                            <Minimize className={cn("h-3 w-3 sm:h-4 sm:w-4", isMobile && "h-4 w-4")} /> : 
+                            <Maximize className={cn("h-3 w-3 sm:h-4 sm:w-4", isMobile && "h-4 w-4")} />
+                          }
                         </Button>
+                        {/* Speed controls */}
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className={cn(
+                              "h-8 w-8 sm:h-10 sm:w-10",
+                              isMobile && "h-10 w-10"
+                            )}
+                            onClick={() => setSpeed(prev => Math.max(prev - 0.5, 0.5))}
+                          >
+                            <ChevronDown className={cn("h-3 w-3 sm:h-4 sm:w-4", isMobile && "h-4 w-4")} />
+                          </Button>
+                          <span className={cn(
+                            "text-[10px] sm:text-xs w-6 text-center",
+                            isMobile && "text-xs w-8"
+                          )}>{speed.toFixed(1)}</span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className={cn(
+                              "h-8 w-8 sm:h-10 sm:w-10",
+                              isMobile && "h-10 w-10"
+                            )}
+                            onClick={() => setSpeed(prev => Math.min(prev + 0.5, 10))}
+                          >
+                            <ChevronUp className={cn("h-3 w-3 sm:h-4 sm:w-4", isMobile && "h-4 w-4")} />
+                          </Button>
+                        </div>
                       </div>
 
                       {/* Text controls */}
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                      <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                         <div className="flex items-center gap-1 sm:gap-2">
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10"
+                            className={cn(
+                              "h-8 w-8 sm:h-10 sm:w-10",
+                              isMobile && "h-10 w-10"
+                            )}
                             onClick={() => setIsMirrored(prev => !prev)}
                           >
-                            <span className="text-[10px] sm:text-xs">↔</span>
+                            <span className={cn(
+                              "text-[10px] sm:text-xs",
+                              isMobile && "text-xs"
+                            )}>↔</span>
                           </Button>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10"
+                            className={cn(
+                              "h-8 w-8 sm:h-10 sm:w-10",
+                              isMobile && "h-10 w-10"
+                            )}
                             onClick={() => setIsVerticalMirrored(prev => !prev)}
                           >
-                            <span className="text-[10px] sm:text-xs">↕</span>
+                            <span className={cn(
+                              "text-[10px] sm:text-xs",
+                              isMobile && "text-xs"
+                            )}>↕</span>
                           </Button>
                         </div>
 
@@ -640,19 +845,34 @@ export default function PrompterPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10"
+                            className={cn(
+                              "h-8 w-8 sm:h-10 sm:w-10",
+                              isMobile && "h-10 w-10"
+                            )}
                             onClick={() => setFontSize((prev) => Math.max(prev - 4, 16))}
                           >
-                            <span className="text-[10px] sm:text-xs">A-</span>
+                            <span className={cn(
+                              "text-[10px] sm:text-xs",
+                              isMobile && "text-xs"
+                            )}>A-</span>
                           </Button>
-                          <span className="text-[10px] sm:text-xs w-6 sm:w-8 text-center">{fontSize}</span>
+                          <span className={cn(
+                            "text-[10px] sm:text-xs w-5 sm:w-6 text-center",
+                            isMobile && "text-xs w-8"
+                          )}>{fontSize}</span>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10"
+                            className={cn(
+                              "h-8 w-8 sm:h-10 sm:w-10",
+                              isMobile && "h-10 w-10"
+                            )}
                             onClick={() => setFontSize((prev) => Math.min(prev + 4, 72))}
                           >
-                            <span className="text-[10px] sm:text-xs">A+</span>
+                            <span className={cn(
+                              "text-[10px] sm:text-xs",
+                              isMobile && "text-xs"
+                            )}>A+</span>
                           </Button>
                         </div>
 
@@ -660,19 +880,34 @@ export default function PrompterPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10"
+                            className={cn(
+                              "h-8 w-8 sm:h-10 sm:w-10",
+                              isMobile && "h-10 w-10"
+                            )}
                             onClick={() => setLineHeight((prev) => Math.max(prev - 0.1, 1.2))}
                           >
-                            <span className="text-[10px] sm:text-xs">↕-</span>
+                            <span className={cn(
+                              "text-[10px] sm:text-xs",
+                              isMobile && "text-xs"
+                            )}>↕-</span>
                           </Button>
-                          <span className="text-[10px] sm:text-xs w-8 sm:w-12 text-center">{lineHeight.toFixed(1)}</span>
+                          <span className={cn(
+                            "text-[10px] sm:text-xs w-6 sm:w-8 text-center",
+                            isMobile && "text-xs w-10"
+                          )}>{lineHeight.toFixed(1)}</span>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10"
+                            className={cn(
+                              "h-8 w-8 sm:h-10 sm:w-10",
+                              isMobile && "h-10 w-10"
+                            )}
                             onClick={() => setLineHeight((prev) => Math.min(prev + 0.1, 2.0))}
                           >
-                            <span className="text-[10px] sm:text-xs">↕+</span>
+                            <span className={cn(
+                              "text-[10px] sm:text-xs",
+                              isMobile && "text-xs"
+                            )}>↕+</span>
                           </Button>
                         </div>
 
@@ -680,38 +915,47 @@ export default function PrompterPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10"
+                            className={cn(
+                              "h-8 w-8 sm:h-10 sm:w-10",
+                              isMobile && "h-10 w-10"
+                            )}
                             onClick={() => setTextAlign('left')}
                           >
-                            <AlignLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <AlignLeft className={cn("h-3 w-3 sm:h-4 sm:w-4", isMobile && "h-4 w-4")} />
                           </Button>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10"
+                            className={cn(
+                              "h-8 w-8 sm:h-10 sm:w-10",
+                              isMobile && "h-10 w-10"
+                            )}
                             onClick={() => setTextAlign('center')}
                           >
-                            <AlignCenter className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <AlignCenter className={cn("h-3 w-3 sm:h-4 sm:w-4", isMobile && "h-4 w-4")} />
                           </Button>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10"
+                            className={cn(
+                              "h-8 w-8 sm:h-10 sm:w-10",
+                              isMobile && "h-10 w-10"
+                            )}
                             onClick={() => setTextAlign('right')}
                           >
-                            <AlignRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <AlignRight className={cn("h-3 w-3 sm:h-4 sm:w-4", isMobile && "h-4 w-4")} />
                           </Button>
                         </div>
                       </div>
                     </div>
 
                     {/* Interactive progress bar */}
-                    <div 
-                      className="mt-2 sm:mt-4 h-1.5 sm:h-2 w-full bg-secondary rounded-full overflow-hidden cursor-pointer"
+                    <div
+                      className="mt-2 sm:mt-3 h-1 sm:h-2 w-full bg-secondary rounded-full overflow-hidden cursor-pointer"
                       onClick={handleProgressBarClick}
                       onMouseDown={handleProgressBarDragStart}
                     >
-                      <div 
+                      <div
                         className="h-full bg-black transition-all duration-100"
                         style={{ width: `${progress}%` }}
                       />
@@ -726,13 +970,32 @@ export default function PrompterPage() {
             <Card className="mt-2 sm:mt-4 bg-white text-black">
               <CardContent className="p-2 sm:p-4">
                 <h3 className="text-xs sm:text-sm font-medium mb-2">{t('shortcuts.title')}</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-1 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground">
-                  <div>{t('shortcuts.space')}</div>
-                  <div>{t('shortcuts.arrows')}</div>
-                  <div>{t('shortcuts.home')}</div>
-                  <div>{t('shortcuts.f')}</div>
-                  <div>{t('shortcuts.click')}</div>
-                </div>
+                {/* PC端提示 */}
+                {!isMobile && (
+                  <div className="space-y-1">
+                    <h4 className="text-[10px] sm:text-xs font-medium text-muted-foreground">{t('shortcuts.pc.title')}</h4>
+                    <div className="grid grid-cols-2 gap-1 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground">
+                      <div>{t('shortcuts.space')}</div>
+                      <div>{t('shortcuts.arrows')}</div>
+                      <div>{t('shortcuts.home')}</div>
+                      <div>{t('shortcuts.f')}</div>
+                      <div>{t('shortcuts.pc.mouse')}</div>
+                      <div>{t('shortcuts.pc.wheel')}</div>
+                    </div>
+                  </div>
+                )}
+                {/* 触屏设备提示 */}
+                {isMobile && (
+                  <div className="space-y-1">
+                    <h4 className="text-[10px] sm:text-xs font-medium text-muted-foreground">{t('shortcuts.touch.title')}</h4>
+                    <div className="grid grid-cols-2 gap-1 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground">
+                      <div>{t('shortcuts.touch.drag')}</div>
+                      <div>{t('shortcuts.touch.tap')}</div>
+                      <div>{t('shortcuts.touch.pinch')}</div>
+                      <div>{t('shortcuts.touch.controls')}</div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

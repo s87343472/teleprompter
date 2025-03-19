@@ -15,28 +15,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 export default function Home() {
   const { t } = useI18n()
 
-  const faqs = [
-    {
-      question: t('home.faq.speed.question'),
-      answer: t('home.faq.speed.answer')
-    },
-    {
-      question: t('home.faq.shortcuts.question'),
-      answer: t('home.faq.shortcuts.answer')
-    },
-    {
-      question: t('home.faq.save.question'),
-      answer: t('home.faq.save.answer')
-    },
-    {
-      question: t('home.faq.mirror.question'),
-      answer: t('home.faq.mirror.answer')
-    },
-    {
-      question: t('home.faq.mobile.question'),
-      answer: t('home.faq.mobile.answer')
-    }
-  ]
+  interface FAQ {
+    q: string;
+    a: string;
+  }
+
+  const faqs = (t('home.faq.items') as unknown) as FAQ[]
 
   const testimonials = [
     {
@@ -117,13 +101,13 @@ export default function Home() {
         </h2>
         <div className="max-w-3xl mx-auto">
           <Accordion type="single" collapsible className="w-full">
-            {faqs.map((faq, index) => (
+            {faqs.map((faq: FAQ, index: number) => (
               <AccordionItem key={index} value={`item-${index}`}>
                 <AccordionTrigger className="text-left">
-                  {faq.question}
+                  {faq.q}
                 </AccordionTrigger>
                 <AccordionContent>
-                  {faq.answer}
+                  {faq.a}
                 </AccordionContent>
               </AccordionItem>
             ))}
