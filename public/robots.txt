@@ -1,0 +1,10 @@
+# https://teleprompter.today/robots.txt
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://teleprompter.today/sitemap.xml
+
+# Contact
+# For any questions about this robots.txt, please contact: support@teleprompter.today 

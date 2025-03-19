@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://teleprompter.today</loc>
+    <lastmod>2024-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://teleprompter.today/zh"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://teleprompter.today/en"/>
+  </url>
+  <url>
+    <loc>https://teleprompter.today/prompter</loc>
+    <lastmod>2024-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://teleprompter.today/zh/prompter"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://teleprompter.today/en/prompter"/>
+  </url>
+  <url>
+    <loc>https://teleprompter.today/history</loc>
+    <lastmod>2024-03-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://teleprompter.today/zh/history"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://teleprompter.today/en/history"/>
+  </url>
+  <url>
+    <loc>https://teleprompter.today/settings</loc>
+    <lastmod>2024-03-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://teleprompter.today/zh/settings"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://teleprompter.today/en/settings"/>
+  </url>
+</urlset> 
