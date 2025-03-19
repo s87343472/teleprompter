@@ -1,0 +1,36 @@
+{
+  "name": "Teleprompter Today",
+  "short_name": "提词器",
+  "description": "专业的网页提词器应用",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "打开提词器",
+      "url": "/prompter",
+      "description": "直接进入提词器页面"
+    }
+  ],
+  "lang": "zh",
+  "dir": "ltr",
+  "categories": ["productivity", "utilities"],
+  "screenshots": [],
+  "prefer_related_applications": false
+} 
