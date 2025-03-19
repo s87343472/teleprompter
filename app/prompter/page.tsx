@@ -30,6 +30,19 @@ import { useI18n } from "@/app/i18n/context"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
+// 添加 gtag 类型定义
+declare global {
+  interface Window {
+    gtag: (
+      command: string,
+      action: string,
+      params?: {
+        [key: string]: any
+      }
+    ) => void
+  }
+}
+
 export default function PrompterPage() {
   const [script, setScript] = useState<string>("")
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
@@ -68,6 +81,12 @@ export default function PrompterPage() {
     },
   }
 
+  const trackEvent = (action: string, params: { [key: string]: any } = {}) => {
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', action, params)
+    }
+  }
+
   // Load saved script from localStorage on component mount
   useEffect(() => {
     const savedScript = localStorage.getItem("teleprompterScript")
@@ -97,31 +116,52 @@ export default function PrompterPage() {
 
   // Animation loop for scrolling
   useEffect(() => {
-    const animate = () => {
-      if (prompterRef.current && containerRef.current) {
-        const containerHeight = containerRef.current.clientHeight
-        const prompterHeight = prompterRef.current.scrollHeight
+    let lastTimestamp = 0
+    const FRAME_RATE = 60 // 限制帧率
+    const FRAME_INTERVAL = 1000 / FRAME_RATE
 
-        // Calculate new position
-        const newPosition = currentPosition + speed * 0.1
-        setCurrentPosition(newPosition)
+    const animate = (timestamp: number) => {
+      if (!prompterRef.current || !containerRef.current) return
 
-        // Calculate progress percentage
-        const maxScroll = prompterHeight + containerHeight
-        const currentProgress = Math.min(100, (newPosition / maxScroll) * 100)
-        setProgress(currentProgress)
+      // 帧率控制
+      const elapsed = timestamp - lastTimestamp
+      if (elapsed < FRAME_INTERVAL) {
+        animationRef.current = requestAnimationFrame(animate)
+        return
+      }
+      lastTimestamp = timestamp
 
-        // Stop if we've reached the end
-        if (newPosition >= maxScroll) {
-          setIsPlaying(false)
-          return
-        }
+      const containerHeight = containerRef.current.clientHeight
+      const prompterHeight = prompterRef.current.scrollHeight
+      const maxScroll = prompterHeight - containerHeight
+
+      // 使用 transform 代替 scrollTop，提供更流畅的动画
+      const newPosition = currentPosition + speed * (elapsed / 16) // 基于时间的平滑动画
+      setCurrentPosition(Math.min(newPosition, maxScroll))
+
+      // 计算进度
+      const progress = Math.min(100, (newPosition / maxScroll) * 100)
+      setProgress(progress)
+
+      // 应用变换
+      prompterRef.current.style.transform = `
+        translate3d(0, ${-newPosition}px, 0)
+        ${isMirrored ? "scaleX(-1)" : ""}
+        ${isVerticalMirrored ? "scaleY(-1)" : ""}
+        rotateX(10deg)
+      `
+
+      // 到达底部时停止
+      if (newPosition >= maxScroll) {
+        setIsPlaying(false)
+        return
       }
 
       animationRef.current = requestAnimationFrame(animate)
     }
 
     if (isPlaying) {
+      lastTimestamp = performance.now()
       animationRef.current = requestAnimationFrame(animate)
     } else if (animationRef.current) {
       cancelAnimationFrame(animationRef.current)
@@ -173,6 +213,7 @@ export default function PrompterPage() {
     if (!isPlaying) {
       // 只有在位置为0时才开始倒计时
       if (currentPosition === 0) {
+        trackEvent('start_prompter', { from_position: 'beginning' })
         setCountdown(3)
         const countdownInterval = setInterval(() => {
           setCountdown((prev) => {
@@ -187,20 +228,28 @@ export default function PrompterPage() {
         }, 1000)
       } else {
         // 如果不是从头开始，直接继续播放
+        trackEvent('resume_prompter', { from_position: currentPosition })
         setIsPlaying(true)
       }
     } else {
+      trackEvent('pause_prompter', { at_position: currentPosition })
       setIsPlaying(false)
     }
   }
 
   const resetPrompter = () => {
+    trackEvent('reset_prompter')
     setCurrentPosition(0)
     setProgress(0)
     setIsPlaying(false)
     setCountdown(null)
     if (prompterRef.current) {
-      prompterRef.current.style.transform = "translateY(0)"
+      prompterRef.current.style.transform = `
+        translate3d(0, 0, 0)
+        ${isMirrored ? "scaleX(-1)" : ""}
+        ${isVerticalMirrored ? "scaleY(-1)" : ""}
+        rotateX(10deg)
+      `
     }
   }
 
@@ -219,6 +268,10 @@ export default function PrompterPage() {
   }
 
   const saveScript = () => {
+    trackEvent('save_script', {
+      script_length: script.length,
+      has_content: script.length > 0
+    })
     // Save to localStorage
     localStorage.setItem("teleprompterScript", script)
 
@@ -246,6 +299,11 @@ export default function PrompterPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    trackEvent('upload_script', {
+      file_type: file.type,
+      file_size: file.size
+    })
+
     const reader = new FileReader()
     reader.onload = (event) => {
       const content = event.target?.result as string
@@ -262,6 +320,9 @@ export default function PrompterPage() {
   }
 
   const downloadScript = () => {
+    trackEvent('download_script', {
+      script_length: script.length
+    })
     const element = document.createElement("a")
     const file = new Blob([script], { type: "text/plain" })
     element.href = URL.createObjectURL(file)
@@ -351,40 +412,64 @@ export default function PrompterPage() {
     }
   }, [currentPosition])
 
-  // Add touch event handlers
+  // 优化触摸事件处理
   useEffect(() => {
+    let initialTouchY = 0
+    let initialPosition = 0
+    let lastTouchY = 0
+    let velocity = 0
+    let lastTimestamp = 0
+
     const handleTouchStart = (e: TouchEvent) => {
-      setTouchStartY(e.touches[0].clientY)
-      setTouchStartPosition(currentPosition)
       if (isPlaying) {
         setIsPlaying(false)
       }
+      initialTouchY = e.touches[0].clientY
+      lastTouchY = initialTouchY
+      initialPosition = currentPosition
+      lastTimestamp = performance.now()
+      velocity = 0
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (touchStartY === null || touchStartPosition === null || !prompterRef.current || !containerRef.current) return
-
       e.preventDefault()
-      const touchDelta = e.touches[0].clientY - touchStartY
-      const prompterHeight = prompterRef.current.scrollHeight
-      const containerHeight = containerRef.current.clientHeight
-      const maxScroll = prompterHeight + containerHeight
-
-      // Adjust touch sensitivity
-      const touchSensitivity = 2
-      const newPosition = Math.max(0, Math.min(maxScroll, touchStartPosition - touchDelta * touchSensitivity))
+      const currentTouchY = e.touches[0].clientY
+      const currentTimestamp = performance.now()
+      const deltaTime = currentTimestamp - lastTimestamp
+      
+      // 计算速度
+      if (deltaTime > 0) {
+        velocity = (lastTouchY - currentTouchY) / deltaTime
+      }
+      
+      const deltaY = initialTouchY - currentTouchY
+      const newPosition = Math.max(0, initialPosition + deltaY)
+      
       setCurrentPosition(newPosition)
-      setProgress((newPosition / maxScroll) * 100)
+      
+      lastTouchY = currentTouchY
+      lastTimestamp = currentTimestamp
     }
 
     const handleTouchEnd = () => {
-      setTouchStartY(null)
-      setTouchStartPosition(null)
+      // 添加惯性滚动
+      if (Math.abs(velocity) > 0.5) {
+        let currentVelocity = velocity
+        const decelerate = () => {
+          currentVelocity *= 0.95 // 减速因子
+          
+          if (Math.abs(currentVelocity) > 0.1) {
+            setCurrentPosition(prev => Math.max(0, prev + currentVelocity * 16))
+            requestAnimationFrame(decelerate)
+          }
+        }
+        requestAnimationFrame(decelerate)
+      }
     }
 
     const container = containerRef.current
     if (container) {
-      container.addEventListener('touchstart', handleTouchStart)
+      container.addEventListener('touchstart', handleTouchStart, { passive: false })
       container.addEventListener('touchmove', handleTouchMove, { passive: false })
       container.addEventListener('touchend', handleTouchEnd)
     }
@@ -396,7 +481,36 @@ export default function PrompterPage() {
         container.removeEventListener('touchend', handleTouchEnd)
       }
     }
-  }, [currentPosition, touchStartY, touchStartPosition, isPlaying])
+  }, [currentPosition, isPlaying])
+
+  // 添加镜像模式变更追踪
+  useEffect(() => {
+    trackEvent('mirror_mode_change', {
+      horizontal: isMirrored,
+      vertical: isVerticalMirrored
+    })
+  }, [isMirrored, isVerticalMirrored])
+
+  // 添加字体大小变更追踪
+  useEffect(() => {
+    trackEvent('font_size_change', {
+      size: fontSize
+    })
+  }, [fontSize])
+
+  // 添加行高变更追踪
+  useEffect(() => {
+    trackEvent('line_height_change', {
+      height: lineHeight
+    })
+  }, [lineHeight])
+
+  // 添加对齐方式变更追踪
+  useEffect(() => {
+    trackEvent('text_align_change', {
+      align: textAlign
+    })
+  }, [textAlign])
 
   return (
     <div className="container mx-auto p-2 sm:p-4">
@@ -435,7 +549,16 @@ export default function PrompterPage() {
         <TabsContent value="prompter">
           <div 
             ref={containerRef} 
-            className="relative h-[calc(100vh-10rem)] sm:h-[calc(100vh-12rem)] overflow-hidden bg-white touch-none"
+            className={cn(
+              "relative h-[calc(100vh-10rem)] sm:h-[calc(100vh-12rem)] overflow-hidden bg-white touch-none",
+              themeStyles[theme].background,
+              isFullscreen ? "h-screen" : ""
+            )}
+            style={{
+              perspective: "1000px",
+              perspectiveOrigin: "center center",
+              WebkitOverflowScrolling: "touch", // 添加 iOS 滚动优化
+            }}
           >
             {countdown !== null ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center backdrop-blur-sm bg-white/80">
@@ -451,14 +574,21 @@ export default function PrompterPage() {
                 <div
                   ref={prompterRef}
                   className={cn(
-                    "absolute w-full transform-gpu transition-transform duration-100 whitespace-pre-wrap break-words text-black",
+                    "absolute w-full transform-gpu will-change-transform",
                     textAlign === 'left' ? 'text-left' : textAlign === 'right' ? 'text-right' : 'text-center',
                     "p-2 sm:p-4"
                   )}
                   style={{
-                    transform: `translateY(calc(33vh - ${currentPosition}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`,
                     fontSize: `${fontSize}px`,
                     lineHeight: lineHeight,
+                    transform: `
+                      translate3d(0, 0, 0)
+                      ${isMirrored ? "scaleX(-1)" : ""}
+                      ${isVerticalMirrored ? "scaleY(-1)" : ""}
+                      rotateX(10deg)
+                    `,
+                    transformOrigin: "center top",
+                    WebkitFontSmoothing: "antialiased",
                   }}
                 >
                   {script}

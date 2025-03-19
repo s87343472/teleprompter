@@ -7,6 +7,7 @@ import { I18nProvider } from "./i18n/context"
 import Header from "@/components/header"
 import { Footer } from "@/components/footer"
 import { defaultMetadata } from "./metadata"
+import { GoogleAnalytics } from "@/components/google-analytics"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -61,6 +62,7 @@ export default function RootLayout({
         <link rel="alternate" href="/" hrefLang="x-default" />
         <link rel="alternate" href="/en" hrefLang="en" />
         <link rel="alternate" href="/zh" hrefLang="zh" />
+        <GoogleAnalytics />
       </head>
       <body className={inter.className}>
         <ThemeProvider
