@@ -29,6 +29,9 @@ interface HistoryItem {
 }
 
 export default function HistoryPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const { t } = useI18n()
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [filteredHistory, setFilteredHistory] = useState<HistoryItem[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -36,9 +39,6 @@ export default function HistoryPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
   const [editingItem, setEditingItem] = useState<HistoryItem | null>(null)
   const [editedContent, setEditedContent] = useState("")
-  const router = useRouter()
-  const { toast } = useToast()
-  const { t } = useI18n()
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -204,25 +204,33 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>{t('history.title')}</CardTitle>
-            <CardDescription>{t('history.subtitle')}</CardDescription>
-          </div>
-          <div className="flex gap-2">
-            {history.length > 0 && (
-              <Button variant="outline" size="sm" onClick={clearHistory} className="flex gap-1">
-                <Trash className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('history.clearAll')}</span>
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={() => router.push('/prompter')} className="flex gap-1">
-              <ExternalLink className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('history.backToPrompter')}</span>
+    <div className="container mx-auto px-4 py-6">
+      <h1 className="sr-only">{t('history.title')}</h1>
+      
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">{t('history.title')}</h2>
+        <div className="flex gap-2">
+          {history.length > 0 && (
+            <Button variant="outline" size="sm" onClick={clearHistory} className="flex gap-1">
+              <Trash className="h-4 w-4" />
+              <span className="hidden sm:inline">{t('history.clearAll')}</span>
             </Button>
-          </div>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            className="flex gap-1"
+            onClick={() => router.push('/prompter')}
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('history.backToPrompter')}</span>
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardDescription>{t('history.subtitle')}</CardDescription>
         </CardHeader>
         
         {history.length > 0 && (
