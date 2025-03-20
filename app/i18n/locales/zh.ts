@@ -20,21 +20,48 @@ export const zh = {
     terms: "使用条款",
   },
   home: {
-    title: "Teleprompter Today",
-    description: "专业的网页提词器，为演讲者、主持人和内容创作者打造。支持中英双语、镜像显示、速度调节等功能。",
+    title: "专业网页提词器",
+    description: "专为演讲者、主持人和内容创作者打造的在线提词器，让您的表达更加流畅自然。",
     getStarted: "开始使用",
-    openRecent: "打开最近的文稿",
+    openRecent: "打开最近文稿",
     features: {
-      title: "功能特性",
+      title: "强大功能",
       easyEditing: "简单编辑",
-      fullControl: "完全控制",
+      fullControl: "完全掌控",
       mirror: "镜像显示",
-      fontSize: "字体调节",
+      fontSize: "字体调整",
       history: "历史记录",
-      crossDevice: "跨设备同步",
-      smooth: "流畅的编辑体验，支持实时预览和自动保存",
-      speed: "精确的速度控制，完美把控演讲节奏",
-      remote: "支持远程控制和多种镜像显示模式",
+      crossDevice: "跨设备使用",
+      smooth: "流畅的编辑体验，无需安装软件，随时随地使用。",
+      speed: "精确控制滚动速度，字体大小和文本样式，满足个性化需求。",
+      remote: "支持镜像显示，完美适配专业提词器设备或远程控制。"
+    },
+    useCases: {
+      title: "使用场景",
+      speech: {
+        title: "演讲和演示",
+        description: "帮助您在重要演讲和商务演示中保持流畅，自信地传达信息同时保持与观众的眼神交流。"
+      },
+      video: {
+        title: "视频创作",
+        description: "为YouTuber、抖音创作者和视频制作人提供稿件提示，减少拍摄错误和重复，提高内容质量。"
+      },
+      education: {
+        title: "教育培训",
+        description: "教师和培训师可以轻松展示教学内容，保持与学生的互动，同时不失专业性。"
+      },
+      language: {
+        title: "语言练习",
+        description: "帮助外语学习者练习发音和口语表达，控制阅读速度，提高语言流利度。"
+      },
+      live: {
+        title: "直播和播客",
+        description: "为主播和播客创作者提供实时提示，保持内容连贯性，避免直播中的尴尬停顿。"
+      },
+      interview: {
+        title: "访谈和采访",
+        description: "记者和主持人可以关注受访者反应，同时准确掌握问题顺序和关键点。"
+      }
     },
     faq: {
       title: "常见问题解答",

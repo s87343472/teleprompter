@@ -20,21 +20,48 @@ export const en = {
     terms: "Terms of Service",
   },
   home: {
-    title: "Teleprompter Today",
-    description: "Professional web teleprompter for speakers, hosts, and content creators. Supporting bilingual, mirroring, speed control, and more.",
+    title: "Professional Web Teleprompter",
+    description: "An online teleprompter designed for speakers, hosts, and content creators to make your expression more fluent and natural.",
     getStarted: "Get Started",
     openRecent: "Open Recent",
     features: {
-      title: "Features",
+      title: "Powerful Features",
       easyEditing: "Easy Editing",
       fullControl: "Full Control",
       mirror: "Mirror Display",
-      fontSize: "Font Control",
-      history: "History",
-      crossDevice: "Cross-device Sync",
-      smooth: "Smooth editing experience with real-time preview and auto-save",
-      speed: "Precise speed control for perfect presentation timing",
-      remote: "Remote control and multiple mirroring modes",
+      fontSize: "Font Adjustment",
+      history: "History Records",
+      crossDevice: "Cross-device Use",
+      smooth: "Smooth editing experience, no installation needed, use anytime, anywhere.",
+      speed: "Precise control of scrolling speed, font size, and text style to meet personalized needs.",
+      remote: "Supports mirror display, perfectly compatible with professional teleprompter devices or remote control."
+    },
+    useCases: {
+      title: "Use Cases",
+      speech: {
+        title: "Speeches & Presentations",
+        description: "Help you maintain fluency in important speeches and business presentations, confidently conveying information while maintaining eye contact with the audience."
+      },
+      video: {
+        title: "Video Creation",
+        description: "Provide script prompts for YouTubers, TikTok creators, and video producers to reduce filming errors and repetition, improving content quality."
+      },
+      education: {
+        title: "Education & Training",
+        description: "Teachers and trainers can easily display teaching content, maintain interaction with students, without losing professionalism."
+      },
+      language: {
+        title: "Language Practice",
+        description: "Help language learners practice pronunciation and oral expression, control reading speed, and improve language fluency."
+      },
+      live: {
+        title: "Live Streams & Podcasts",
+        description: "Provide real-time prompts for streamers and podcast creators, maintaining content coherence and avoiding awkward pauses during broadcasts."
+      },
+      interview: {
+        title: "Interviews",
+        description: "Journalists and hosts can focus on interviewees' reactions while accurately keeping track of question order and key points."
+      }
     },
     faq: {
       title: "FAQ",

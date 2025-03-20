@@ -11,6 +11,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Presentation, Video, GraduationCap, Languages, Mic2, Radio } from "lucide-react"
+import Image from "next/image"
 
 export default function Home() {
   const { t } = useI18n()
@@ -26,19 +28,19 @@ export default function Home() {
     {
       name: t('home.testimonials.host.name'),
       role: t('home.testimonials.host.role'),
-      avatar: "/avatars/host.png",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=host",
       content: t('home.testimonials.host.content')
     },
     {
       name: t('home.testimonials.professor.name'),
       role: t('home.testimonials.professor.role'),
-      avatar: "/avatars/professor.png",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=professor",
       content: t('home.testimonials.professor.content')
     },
     {
       name: t('home.testimonials.creator.name'),
       role: t('home.testimonials.creator.role'),
-      avatar: "/avatars/creator.png",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=creator",
       content: t('home.testimonials.creator.content')
     }
   ]
@@ -90,6 +92,45 @@ export default function Home() {
           <FeatureCard 
             title={t('home.features.crossDevice')} 
             description={t('home.features.remote')} 
+          />
+        </div>
+      </div>
+
+      {/* 使用场景部分 */}
+      <div className="mt-20">
+        <h2 className="text-3xl font-semibold text-center mb-12">
+          {t('home.useCases.title')}
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <UseCaseCard 
+            icon={<Presentation className="h-16 w-16 text-primary" />}
+            title={t('home.useCases.speech.title')} 
+            description={t('home.useCases.speech.description')}
+          />
+          <UseCaseCard 
+            icon={<Video className="h-16 w-16 text-primary" />}
+            title={t('home.useCases.video.title')} 
+            description={t('home.useCases.video.description')}
+          />
+          <UseCaseCard 
+            icon={<GraduationCap className="h-16 w-16 text-primary" />}
+            title={t('home.useCases.education.title')} 
+            description={t('home.useCases.education.description')}
+          />
+          <UseCaseCard 
+            icon={<Languages className="h-16 w-16 text-primary" />}
+            title={t('home.useCases.language.title')} 
+            description={t('home.useCases.language.description')}
+          />
+          <UseCaseCard 
+            icon={<Radio className="h-16 w-16 text-primary" />}
+            title={t('home.useCases.live.title')} 
+            description={t('home.useCases.live.description')}
+          />
+          <UseCaseCard 
+            icon={<Mic2 className="h-16 w-16 text-primary" />}
+            title={t('home.useCases.interview.title')} 
+            description={t('home.useCases.interview.description')}
           />
         </div>
       </div>
@@ -147,6 +188,26 @@ function FeatureCard({ title, description }: { title: string; description: strin
     <Card className="p-6 hover:shadow-lg transition-shadow">
       <h3 className="text-xl font-medium mb-3">{title}</h3>
       <p className="text-muted-foreground">{description}</p>
+    </Card>
+  )
+}
+
+function UseCaseCard({ icon, title, description }: { 
+  icon: React.ReactNode; 
+  title: string; 
+  description: string;
+}) {
+  return (
+    <Card className="overflow-hidden hover:shadow-lg transition-all border-t-4 border-primary/10 group">
+      <div className="pt-8 px-6 flex items-center justify-center">
+        <div className="rounded-full bg-primary/10 p-6 transition-all duration-300 group-hover:bg-primary/20 group-hover:scale-110">
+          {icon}
+        </div>
+      </div>
+      <div className="p-6">
+        <h3 className="text-xl font-medium mb-3 text-center">{title}</h3>
+        <p className="text-muted-foreground">{description}</p>
+      </div>
     </Card>
   )
 }
