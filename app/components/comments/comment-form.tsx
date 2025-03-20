@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -8,9 +7,10 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { Turnstile } from "./turnstile"
 import { useToast } from "@/hooks/use-toast"
 import { useI18n } from "@/app/i18n/context"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 // 评论验证模式
 const formSchema = z.object({
@@ -28,8 +28,6 @@ const formSchema = z.object({
 export function CommentForm() {
   const { toast } = useToast()
   const { t } = useI18n()
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // 创建表单
   const form = useForm<z.infer<typeof formSchema>>({
@@ -41,59 +39,25 @@ export function CommentForm() {
     },
   })
 
-  // 提交表单
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    // 验证Turnstile令牌存在
-    if (!turnstileToken) {
-      toast({
-        title: t("comments.verificationFailed"),
-        description: t("comments.verification"),
-        variant: "destructive",
-      })
-      return
-    }
-
-    try {
-      setIsSubmitting(true)
-
-      const response = await fetch("/api/comments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...values,
-          token: turnstileToken,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || t("comments.submitFailed"))
-      }
-
-      // 重置表单
-      form.reset()
-      setTurnstileToken(null)
-      
-      // 显示成功消息
-      toast({
-        title: t("comments.commentSubmitted"),
-        description: t("comments.thankYou"),
-      })
-    } catch (error) {
-      toast({
-        title: t("comments.submitFailed"),
-        description: error instanceof Error ? error.message : t("comments.submitFailed"),
-        variant: "destructive",
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
+  // 提交表单 - 显示功能禁用消息
+  function onSubmit() {
+    toast({
+      title: "评论功能暂时禁用",
+      description: "我们计划在未来用户量增加时迁移到专门的服务器。请谅解！",
+      variant: "destructive",
+    })
   }
 
   return (
     <Form {...form}>
+      <Alert variant="destructive" className="mb-6">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>评论功能暂时禁用</AlertTitle>
+        <AlertDescription>
+          我们计划在未来用户量增加时迁移到专门的服务器处理评论功能。请您谅解！
+        </AlertDescription>
+      </Alert>
+      
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField
@@ -103,7 +67,7 @@ export function CommentForm() {
               <FormItem>
                 <FormLabel>{t('comments.userName')}</FormLabel>
                 <FormControl>
-                  <Input placeholder={t('comments.userName')} {...field} />
+                  <Input placeholder={t('comments.userName')} {...field} disabled />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -116,7 +80,7 @@ export function CommentForm() {
               <FormItem>
                 <FormLabel>{t('comments.email')}</FormLabel>
                 <FormControl>
-                  <Input placeholder={t('comments.email')} type="email" {...field} />
+                  <Input placeholder={t('comments.email')} type="email" {...field} disabled />
                 </FormControl>
                 <FormDescription>
                   {t('comments.emailPrivacy')}
@@ -138,6 +102,7 @@ export function CommentForm() {
                   placeholder={t('comments.commentPlaceholder')}
                   className="min-h-[120px]"
                   {...field}
+                  disabled
                 />
               </FormControl>
               <FormMessage />
@@ -145,14 +110,8 @@ export function CommentForm() {
           )}
         />
 
-        {/* Cloudflare Turnstile 验证 */}
-        <Turnstile
-          siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"} /* 使用环境变量中的站点密钥 */
-          onVerify={(token) => setTurnstileToken(token)}
-        />
-
-        <Button type="submit" disabled={isSubmitting || !turnstileToken}>
-          {isSubmitting ? t('comments.submitting') : t('comments.submit')}
+        <Button type="submit" disabled={true}>
+          {t('comments.submit')} (已禁用)
         </Button>
       </form>
     </Form>

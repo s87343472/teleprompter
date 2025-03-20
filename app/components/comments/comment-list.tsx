@@ -1,15 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useI18n } from "@/app/i18n/context"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { InfoIcon } from "lucide-react"
 
 interface Comment {
   id: string
   name: string
-  email: string
+  email?: string
   comment: string
   createdAt: string
 }
@@ -20,12 +22,15 @@ export function CommentList() {
   const [error, setError] = useState<string | null>(null)
   const { t, locale } = useI18n()
 
+  // 获取评论数据
   useEffect(() => {
-    // 获取评论数据
     const fetchComments = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch("/api/comments")
+        const response = await fetch("/api/comments", {
+          // 添加缓存控制，避免频繁请求
+          cache: 'force-cache'
+        })
         
         if (!response.ok) {
           throw new Error(t("comments.loading"))
@@ -45,9 +50,7 @@ export function CommentList() {
   }, [t])
 
   // 获取用户名首字母作为头像
-  const getInitials = (name: string) => {
-    return name.charAt(0).toUpperCase()
-  }
+  const getInitials = (name: string) => name.charAt(0).toUpperCase()
 
   // 格式化日期
   const formatDate = (dateString: string) => {
@@ -67,7 +70,7 @@ export function CommentList() {
     return (
       <div className="space-y-4">
         <h2 className="text-xl font-bold">{t('comments.loading')}</h2>
-        {[1, 2, 3].map((i) => (
+        {[1, 2].map((i) => (
           <Card key={i} className="w-full">
             <CardHeader className="flex flex-row items-center gap-4 pb-2">
               <Skeleton className="h-12 w-12 rounded-full" />
@@ -107,6 +110,14 @@ export function CommentList() {
 
   return (
     <div className="space-y-4">
+      <Alert className="mb-6">
+        <InfoIcon className="h-4 w-4" />
+        <AlertTitle>示例评论展示</AlertTitle>
+        <AlertDescription>
+          下方显示的是示例评论数据。评论功能暂时禁用，我们计划在未来用户量增加时迁移到专门的服务器。
+        </AlertDescription>
+      </Alert>
+
       <h2 className="text-xl font-bold">{t('comments.title')} ({comments.length})</h2>
       {comments.map((comment) => (
         <Card key={comment.id} className="w-full">
