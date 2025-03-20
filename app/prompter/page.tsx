@@ -66,6 +66,7 @@ export default function PrompterPage() {
   const [dragStartY, setDragStartY] = useState<number | null>(null)
   const [dragStartPosition, setDragStartPosition] = useState<number | null>(null)
   const [isLandscape, setIsLandscape] = useState<boolean>(false)
+  const [autoSave, setAutoSave] = useState<boolean>(true)
 
   const prompterRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -100,20 +101,112 @@ export default function PrompterPage() {
     }
   }
 
-  // Load saved script from localStorage on component mount
+  // 从localStorage加载设置
   useEffect(() => {
-    const savedScript = localStorage.getItem("teleprompterScript")
-    if (savedScript) {
-      setScript(savedScript)
+    try {
+      // 加载保存的设置
+      const savedSettings = localStorage.getItem("teleprompterSettings")
+      if (savedSettings) {
+        const settings = JSON.parse(savedSettings)
+        if (settings.fontSize) setFontSize(settings.fontSize)
+        if (settings.scrollSpeed) setSpeed(settings.scrollSpeed)
+        if (settings.lineHeight) setLineHeight(settings.lineHeight)
+        if (settings.textAlign) setTextAlign(settings.textAlign)
+        if (settings.autoSave !== undefined) setAutoSave(settings.autoSave)
+      }
+
+      // 加载保存的脚本
+      const savedScript = localStorage.getItem("teleprompterScript")
+      if (savedScript) {
+        setScript(savedScript)
+      }
+    } catch (error) {
+      console.error("Error loading settings or script:", error)
     }
   }, [])
 
-  // Save script to localStorage when it changes
+  // 确保DOM元素加载完成后初始化
   useEffect(() => {
-    if (script !== null) {
-      localStorage.setItem("teleprompterScript", script)
+    // 检查DOM元素是否已准备好
+    const checkRefsReady = () => {
+      if (prompterRef.current && containerRef.current) {
+        // 初始化提词器位置
+        prompterRef.current.style.transform = `translateY(33vh) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
+        return true
+      }
+      return false
     }
-  }, [script])
+    
+    // 如果DOM元素未准备好，每100ms检查一次
+    if (!checkRefsReady()) {
+      const interval = setInterval(() => {
+        if (checkRefsReady()) {
+          clearInterval(interval)
+        }
+      }, 100)
+      
+      // 最多尝试50次（5秒）
+      setTimeout(() => clearInterval(interval), 5000)
+      
+      return () => clearInterval(interval)
+    }
+  }, [isMirrored, isVerticalMirrored])
+
+  // 自动保存脚本
+  useEffect(() => {
+    if (autoSave && script.trim()) {
+      const saveTimeout = setTimeout(() => {
+        localStorage.setItem("teleprompterScript", script)
+      }, 1000) // 延迟1秒保存，避免频繁保存
+
+      return () => clearTimeout(saveTimeout)
+    }
+  }, [script, autoSave])
+
+  // 保存脚本到历史记录
+  const saveToHistory = () => {
+    if (!script.trim()) return
+
+    try {
+      // 加载现有历史记录
+      const savedHistory = localStorage.getItem("teleprompterHistory") || "[]"
+      const history = JSON.parse(savedHistory)
+
+      // 创建新的历史记录项
+      const newItem = {
+        id: Date.now(),
+        title: script.split('\n')[0].substring(0, 50) || "无标题脚本",
+        preview: script.substring(0, 100),
+        date: new Date().toISOString(),
+        content: script
+      }
+
+      // 添加到历史记录开头
+      const newHistory = [newItem, ...history.slice(0, 19)] // 最多保存20条记录
+      localStorage.setItem("teleprompterHistory", JSON.stringify(newHistory))
+
+      toast({
+        title: t('prompter.savedToHistory'),
+        description: t('prompter.savedToHistoryDescription'),
+      })
+    } catch (error) {
+      console.error("Error saving to history:", error)
+    }
+  }
+
+  const saveScript = () => {
+    if (!script.trim()) {
+      toast({
+        title: t('prompter.emptyScript'),
+        description: t('prompter.emptyScriptDescription'),
+        variant: "destructive"
+      })
+      return
+    }
+
+    localStorage.setItem("teleprompterScript", script)
+    saveToHistory()
+  }
 
   // Handle fullscreen changes
   useEffect(() => {
@@ -133,7 +226,11 @@ export default function PrompterPage() {
     const FRAME_STEP = 1000 / 60 // 60fps
 
     const animate = (timestamp: number) => {
-      if (!prompterRef.current || !containerRef.current) return
+      if (!prompterRef.current || !containerRef.current) {
+        // 如果DOM元素未准备好，取消当前帧并尝试下一帧
+        animationRef.current = requestAnimationFrame(animate)
+        return
+      }
 
       if (lastTimestamp === 0) {
         lastTimestamp = timestamp
@@ -148,14 +245,16 @@ export default function PrompterPage() {
 
       const containerHeight = containerRef.current.clientHeight
       const prompterHeight = prompterRef.current.scrollHeight
-      const maxScroll = prompterHeight - containerHeight
+      
+      // 防止除以零或负值计算
+      const maxScroll = Math.max(1, prompterHeight - containerHeight)
 
       // 计算进度
       const progress = Math.min(100, (newPosition / maxScroll) * 100)
       setProgress(progress)
 
-      // 应用变换
-      prompterRef.current.style.transform = `translateY(calc(33vh - ${newPosition}px))`
+      // 应用变换，添加所有变换效果
+      prompterRef.current.style.transform = `translateY(calc(33vh - ${newPosition}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
 
       // 到达底部时停止
       if (newPosition >= maxScroll) {
@@ -168,6 +267,9 @@ export default function PrompterPage() {
 
     if (isPlaying) {
       lastTimestamp = 0
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
       animationRef.current = requestAnimationFrame(animate)
     } else if (animationRef.current) {
       cancelAnimationFrame(animationRef.current)
@@ -178,7 +280,7 @@ export default function PrompterPage() {
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [isPlaying, speed, currentPosition])
+  }, [isPlaying, speed, currentPosition, isMirrored, isVerticalMirrored])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -216,6 +318,14 @@ export default function PrompterPage() {
   }, [isPlaying])
 
   const togglePlay = () => {
+    // 确保DOM元素已准备好
+    if (!prompterRef.current || !containerRef.current) {
+      console.warn("DOM elements not ready yet, retrying...")
+      // 延迟100ms后重试
+      setTimeout(togglePlay, 100)
+      return
+    }
+
     if (!isPlaying) {
       // 只有在位置为0时才开始倒计时
       if (currentPosition === 0) {
@@ -249,12 +359,11 @@ export default function PrompterPage() {
     setProgress(0)
     setIsPlaying(false)
     setCountdown(null)
+    
+    // 确保DOM元素已准备好
     if (prompterRef.current) {
-      prompterRef.current.style.transform = `
-        translateY(0)
-        ${isMirrored ? 'scaleX(-1)' : ''}
-        ${isVerticalMirrored ? 'scaleY(-1)' : ''}
-      `
+      // 使用单一的transform属性设置所有变换
+      prompterRef.current.style.transform = `translateY(33vh) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
     }
   }
 
@@ -270,34 +379,6 @@ export default function PrompterPage() {
     } else {
       document.exitFullscreen()
     }
-  }
-
-  const saveScript = () => {
-    trackEvent('save_script', {
-      script_length: script.length,
-      has_content: script.length > 0
-    })
-    // Save to localStorage
-    localStorage.setItem("teleprompterScript", script)
-
-    // Add to history
-    const now = new Date()
-    const scriptHistory = JSON.parse(localStorage.getItem("teleprompterHistory") || "[]")
-    const newHistoryItem = {
-      id: Date.now(),
-      title: script.split("\n")[0] || "Untitled Script",
-      preview: script.substring(0, 100),
-      date: now.toISOString(),
-      content: script,
-    }
-
-    scriptHistory.unshift(newHistoryItem)
-    localStorage.setItem("teleprompterHistory", JSON.stringify(scriptHistory.slice(0, 10)))
-
-    toast({
-      title: "Script Saved",
-      description: "Your script has been saved successfully.",
-    })
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -594,6 +675,17 @@ export default function PrompterPage() {
       horizontal: isMirrored,
       vertical: isVerticalMirrored
     })
+    
+    // 确保镜像模式变化后立即应用到文本上
+    if (prompterRef.current) {
+      // 获取当前的位置信息
+      const currentTransform = prompterRef.current.style.transform;
+      const translateYMatch = currentTransform.match(/translateY\([^)]+\)/);
+      const translateY = translateYMatch ? translateYMatch[0] : 'translateY(33vh)';
+      
+      // 应用新的变换，保持原有的位置信息
+      prompterRef.current.style.transform = `${translateY} ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`;
+    }
   }, [isMirrored, isVerticalMirrored])
 
   // 添加字体大小变更追踪
@@ -694,6 +786,7 @@ export default function PrompterPage() {
             style={{
               WebkitOverflowScrolling: "touch",
             }}
+            id="prompter-container" // 添加ID方便调试
           >
             {countdown !== null ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center backdrop-blur-sm bg-white/80 z-50">
