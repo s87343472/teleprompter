@@ -23,12 +23,14 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  Clock,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useMobile } from "@/hooks/use-mobile"
 import { useI18n } from "@/app/i18n/context"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import Lenis from 'lenis'
 
 // 添加 gtag 类型定义
 declare global {
@@ -67,13 +69,18 @@ export default function PrompterPage() {
   const [dragStartPosition, setDragStartPosition] = useState<number | null>(null)
   const [isLandscape, setIsLandscape] = useState<boolean>(false)
   const [autoSave, setAutoSave] = useState<boolean>(true)
+  const [estimatedTime, setEstimatedTime] = useState<number>(0)
 
   const prompterRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<number | null>(null)
+  const currentPositionRef = useRef<number>(0) // 添加引用来存储当前位置
   const { toast } = useToast()
   const isMobile = useMobile()
   const { t } = useI18n()
+
+  // 使用Lenis滚动库的引用
+  const lenisRef = useRef<Lenis | null>(null)
 
   const themeStyles = {
     light: {
@@ -131,7 +138,7 @@ export default function PrompterPage() {
     const checkRefsReady = () => {
       if (prompterRef.current && containerRef.current) {
         // 初始化提词器位置
-        prompterRef.current.style.transform = `translateY(33vh) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
+        prompterRef.current.style.transform = `translateY(25vh) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
         return true
       }
       return false
@@ -220,67 +227,187 @@ export default function PrompterPage() {
     }
   }, [])
 
-  // Animation loop for scrolling
-  useEffect(() => {
-    let lastTimestamp = 0
-    const FRAME_STEP = 1000 / 60 // 60fps
-
-    const animate = (timestamp: number) => {
-      if (!prompterRef.current || !containerRef.current) {
-        // 如果DOM元素未准备好，取消当前帧并尝试下一帧
-        animationRef.current = requestAnimationFrame(animate)
-        return
-      }
-
-      if (lastTimestamp === 0) {
-        lastTimestamp = timestamp
-      }
-
-      const deltaTime = timestamp - lastTimestamp
-      lastTimestamp = timestamp
-
-      // 计算新位置
-      const newPosition = currentPosition + (speed * deltaTime) / 16
-      setCurrentPosition(newPosition)
-
-      const containerHeight = containerRef.current.clientHeight
-      const prompterHeight = prompterRef.current.scrollHeight
+  // 计算最终位置
+  const calculateFinalPosition = () => {
+    if (!prompterRef.current || !containerRef.current) return 0
+    
+    const containerHeight = containerRef.current.clientHeight
+    const prompterHeight = prompterRef.current.scrollHeight
+    
+    // 解析文本内容，计算实际行数
+    const lines = script.split('\n')
+    const lineCount = lines.length
+    
+    // 计算提示条位置（容器高度的25%处）
+    const markerPosition = containerHeight * 0.25
+    
+    // 直接计算最大滚动距离
+    const maxScroll = Math.max(1, prompterHeight - containerHeight)
+    
+    // 确保有额外的空间显示最后几行文本
+    const extraPadding = containerHeight * 0.75
+    
+    if (lineCount === 16) {
+      // 对16行的特殊处理
+      // 计算每行的平均高度
+      const lineHeight = (prompterHeight - 64) / 16 // 减去padding
       
-      // 防止除以零或负值计算
-      const maxScroll = Math.max(1, prompterHeight - containerHeight)
-
-      // 计算进度
-      const progress = Math.min(100, (newPosition / maxScroll) * 100)
-      setProgress(progress)
-
-      // 应用变换，添加所有变换效果
-      prompterRef.current.style.transform = `translateY(calc(33vh - ${newPosition}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
-
-      // 到达底部时停止
-      if (newPosition >= maxScroll) {
-        setIsPlaying(false)
-        return
-      }
-
-      animationRef.current = requestAnimationFrame(animate)
+      // 我们希望第16行显示在提示条位置，需要额外滚动的距离
+      // 公式：第16行的顶部位置减去提示条位置
+      // 第16行的顶部位置 = 前15行的高度 = 15 * lineHeight
+      const line16TopPosition = 15 * lineHeight
+      
+      // 额外的偏移量，将第16行对齐到提示条
+      const extraOffset = line16TopPosition - markerPosition + extraPadding
+      
+      return maxScroll + extraOffset
+    } else {
+      // 通用滚动计算
+      // 对于其他行数，使用容器高度的一部分作为额外偏移量
+      return maxScroll + extraPadding
     }
+  }
 
-    if (isPlaying) {
-      lastTimestamp = 0
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
+  // 初始化Lenis滚动库
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    // 创建新的Lenis实例
+    lenisRef.current = new Lenis({
+      wrapper: containerRef.current as HTMLElement,
+      content: prompterRef.current as HTMLElement || undefined,
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // exponential easing
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      syncTouch: false, // 触摸设备使用原生滚动
+      touchMultiplier: 2,
+    })
+    
+    // 设置Lenis的RAF循环
+    function raf(time: number) {
+      if (lenisRef.current) {
+        lenisRef.current.raf(time)
       }
-      animationRef.current = requestAnimationFrame(animate)
-    } else if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current)
+      requestAnimationFrame(raf)
     }
+    
+    requestAnimationFrame(raf)
 
+    // 清理函数
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
+      if (lenisRef.current) {
+        lenisRef.current.destroy()
+        lenisRef.current = null
       }
     }
-  }, [isPlaying, speed, currentPosition, isMirrored, isVerticalMirrored])
+  }, [])
+
+  // 同步ref和state
+  useEffect(() => {
+    currentPositionRef.current = currentPosition;
+  }, [currentPosition]);
+
+  // 使用普通方法处理滚动动画，不依赖Lenis的scrollTo
+  useEffect(() => {
+    if (!prompterRef.current || !containerRef.current) return
+    
+    let animationId: number | null = null
+    const maxScroll = calculateFinalPosition()
+    
+    // 滚动更新函数
+    function update() {
+      if (isPlaying) {
+        // 获取当前位置
+        const currentPos = currentPositionRef.current
+        
+        // 计算要滚动的量
+        let scrollAmount = speed * 0.05
+        
+        // 如果接近结束位置，应用减速
+        if (currentPos > maxScroll * 0.95) {
+          const remainingDistance = maxScroll - currentPos
+          const slowdownFactor = Math.max(0.1, remainingDistance / (maxScroll * 0.05))
+          scrollAmount *= slowdownFactor
+          
+          // 如果非常接近最终位置，停止滚动
+          if (remainingDistance < 5) {
+            setIsPlaying(false)
+            setCurrentPosition(maxScroll)
+            currentPositionRef.current = maxScroll
+            setProgress(100)
+            
+            // 手动设置最终位置
+            if (prompterRef.current) {
+              prompterRef.current.style.transform = `translateY(calc(25vh - ${maxScroll}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
+            }
+            
+            return
+          }
+        }
+        
+        // 计算新位置
+        const newPosition = Math.min(maxScroll, currentPos + scrollAmount)
+        
+        // 更新状态和ref
+        setCurrentPosition(newPosition)
+        currentPositionRef.current = newPosition
+        
+        // 计算和更新进度
+        const progressPercent = (newPosition / maxScroll) * 100
+        setProgress(progressPercent)
+        
+        // 更新提词器位置
+        if (prompterRef.current) {
+          prompterRef.current.style.transform = `translateY(calc(25vh - ${newPosition}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
+        }
+        
+        // 同步Lenis滚动位置
+        if (lenisRef.current) {
+          lenisRef.current.scrollTo(newPosition, { immediate: true })
+        }
+      }
+      
+      animationId = requestAnimationFrame(update)
+    }
+    
+    if (isPlaying) {
+      animationId = requestAnimationFrame(update)
+    }
+    
+    return () => {
+      if (animationId !== null) {
+        cancelAnimationFrame(animationId)
+      }
+    }
+  }, [isPlaying, speed, isMirrored, isVerticalMirrored, script])
+
+  // 计算预估播放时间
+  useEffect(() => {
+    if (prompterRef.current && containerRef.current) {
+      const prompterHeight = prompterRef.current.scrollHeight
+      const containerHeight = containerRef.current.clientHeight
+      const maxScroll = calculateFinalPosition()
+      const remainingScroll = maxScroll - currentPosition
+      
+      // 每秒滚动的像素数 = 速度值 * 基础速度系数
+      const pixelsPerSecond = speed * 60 / 16
+      
+      if (pixelsPerSecond > 0) {
+        // 剩余时间(秒) = 剩余滚动距离 / 每秒滚动速度
+        const timeInSeconds = remainingScroll / pixelsPerSecond
+        setEstimatedTime(Math.max(0, Math.round(timeInSeconds)))
+      }
+    }
+  }, [speed, currentPosition, script])
+
+  // 格式化时间为分:秒格式
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -356,14 +483,20 @@ export default function PrompterPage() {
   const resetPrompter = () => {
     trackEvent('reset_prompter')
     setCurrentPosition(0)
+    currentPositionRef.current = 0
     setProgress(0)
     setIsPlaying(false)
     setCountdown(null)
     
+    // 重置Lenis滚动位置
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(0, { immediate: true })
+    }
+    
     // 确保DOM元素已准备好
     if (prompterRef.current) {
       // 使用单一的transform属性设置所有变换
-      prompterRef.current.style.transform = `translateY(33vh) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
+      prompterRef.current.style.transform = `translateY(25vh) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
     }
   }
 
@@ -418,92 +551,13 @@ export default function PrompterPage() {
     document.body.removeChild(element)
   }
 
-  const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!prompterRef.current || !containerRef.current) return
-    
-    const rect = e.currentTarget.getBoundingClientRect()
-    const clickPosition = (e.clientX - rect.left) / rect.width
-    const prompterHeight = prompterRef.current.scrollHeight
-    const containerHeight = containerRef.current.clientHeight
-    const maxScroll = prompterHeight + containerHeight
-    
-    const newPosition = maxScroll * clickPosition
-    setCurrentPosition(newPosition)
-    setProgress(clickPosition * 100)
-  }
-
-  const handleProgressBarDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
-    setIsDragging(true)
-    setProgressBarRef(e.currentTarget)
-  }
-
-  const handleProgressBarDragEnd = () => {
-    setIsDragging(false)
-    setProgressBarRef(null)
-  }
-
-  const handleProgressBarDrag = (e: MouseEvent) => {
-    if (!isDragging || !progressBarRef || !prompterRef.current || !containerRef.current) return
-
-    const rect = progressBarRef.getBoundingClientRect()
-    const clickPosition = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-    const prompterHeight = prompterRef.current.scrollHeight
-    const containerHeight = containerRef.current.clientHeight
-    const maxScroll = prompterHeight + containerHeight
-    
-    const newPosition = maxScroll * clickPosition
-    setCurrentPosition(newPosition)
-    setProgress(clickPosition * 100)
-  }
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleProgressBarDrag)
-      window.addEventListener('mouseup', handleProgressBarDragEnd)
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleProgressBarDrag)
-      window.removeEventListener('mouseup', handleProgressBarDragEnd)
-    }
-  }, [isDragging])
-
-  // Add wheel event handler
-  useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      if (!prompterRef.current || !containerRef.current) return
-
-      e.preventDefault()
-      const prompterHeight = prompterRef.current.scrollHeight
-      const containerHeight = containerRef.current.clientHeight
-      const maxScroll = prompterHeight + containerHeight
-
-      // Adjust scroll sensitivity
-      const scrollSensitivity = 1.5
-      const delta = e.deltaY * scrollSensitivity
-
-      const newPosition = Math.max(0, Math.min(maxScroll, currentPosition + delta))
-      setCurrentPosition(newPosition)
-      setProgress((newPosition / maxScroll) * 100)
-    }
-
-    const container = containerRef.current
-    if (container) {
-      container.addEventListener('wheel', handleWheel, { passive: false })
-    }
-
-    return () => {
-      if (container) {
-        container.removeEventListener('wheel', handleWheel)
-      }
-    }
-  }, [currentPosition])
-
-  // 修改点击事件处理
+  // 修改点击事件处理，避免滚动区域与进度条互相干扰
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      // 如果点击的是控制条或其子元素，不处理点击事件
+      // 如果点击的是控制条、进度条或按钮，不处理点击事件
       if (e.target instanceof Element && 
           (e.target.closest('.controls-container') || 
+           e.target.closest('.progress-bar-container') ||
            e.target.closest('button'))) {
         return
       }
@@ -525,30 +579,229 @@ export default function PrompterPage() {
     }
   }, [isFullscreen])
 
-  // 修改文本拖动功能
+  // 修改进度条点击处理
+  const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // 阻止事件冒泡，避免点击进度条时触发容器的事件
+    e.stopPropagation()
+    
+    if (!prompterRef.current || !containerRef.current || !lenisRef.current) return
+    
+    const rect = e.currentTarget.getBoundingClientRect()
+    const clickPosition = (e.clientX - rect.left) / rect.width
+    const finalPosition = calculateFinalPosition()
+    
+    let newPosition = finalPosition * clickPosition
+    
+    // 如果点击接近进度条末尾(95%以上)，确保显示到文本最后
+    if (clickPosition >= 0.95) {
+      newPosition = finalPosition
+    }
+    
+    // 使用Lenis滚动到指定位置
+    lenisRef.current.scrollTo(newPosition, { immediate: true })
+    
+    // 更新状态和ref
+    setCurrentPosition(newPosition)
+    currentPositionRef.current = newPosition
+    setProgress(clickPosition * 100)
+    
+    // 更新提词器位置
+    if (prompterRef.current) {
+      prompterRef.current.style.transform = `translateY(calc(25vh - ${newPosition}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
+    }
+  }
+
+  // 进度条拖动开始
+  const handleProgressBarDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    // 阻止事件冒泡，避免拖动进度条时触发容器的事件
+    e.stopPropagation()
+    setIsDragging(true)
+    setProgressBarRef(e.currentTarget)
+  }
+
+  // 进度条拖动结束
+  const handleProgressBarDragEnd = () => {
+    setIsDragging(false)
+    setProgressBarRef(null)
+  }
+
+  // 进度条拖动
+  const handleProgressBarDrag = (e: MouseEvent) => {
+    if (!isDragging || !progressBarRef || !prompterRef.current || !containerRef.current || !lenisRef.current) return
+
+    const rect = progressBarRef.getBoundingClientRect()
+    const clickPosition = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+    const finalPosition = calculateFinalPosition()
+    
+    let newPosition = finalPosition * clickPosition
+    
+    // 如果拖拽到接近末尾，确保显示全部文本
+    if (clickPosition >= 0.95) {
+      newPosition = finalPosition
+    }
+    
+    // 使用Lenis滚动到指定位置
+    lenisRef.current.scrollTo(newPosition, { immediate: true })
+    
+    // 更新状态和ref
+    setCurrentPosition(newPosition)
+    currentPositionRef.current = newPosition
+    setProgress(clickPosition * 100)
+    
+    // 更新提词器位置
+    if (prompterRef.current) {
+      prompterRef.current.style.transform = `translateY(calc(25vh - ${newPosition}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
+    }
+  }
+
+  // 进度条拖动事件监听
   useEffect(() => {
-    const handleMouseDown = (e: MouseEvent) => {
-      if (e.target instanceof HTMLButtonElement || 
-          e.target instanceof HTMLDivElement && e.target.closest('.controls-container')) {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleProgressBarDrag)
+      window.addEventListener('mouseup', handleProgressBarDragEnd)
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleProgressBarDrag)
+      window.removeEventListener('mouseup', handleProgressBarDragEnd)
+    }
+  }, [isDragging])
+
+  // 滚轮事件处理
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      
+      if (!prompterRef.current || !containerRef.current || !lenisRef.current) return
+      
+      const finalPosition = calculateFinalPosition()
+      
+      // 如果播放已完成并滚动到了最后，禁止进一步滚动
+      if (currentPositionRef.current >= finalPosition * 0.99) {
         return
       }
+      
+      // 滚轮的deltaY是滚动方向和强度
+      const direction = e.deltaY > 0 ? 1 : -1
+      const scrollSensitivity = 2.0
+      
+      // 计算要滚动的量
+      let scrollDelta = direction * scrollSensitivity
+      
+      // 如果接近结束位置，应用减速
+      if (currentPositionRef.current > finalPosition * 0.9) {
+        const remainingDistance = finalPosition - currentPositionRef.current
+        const slowdownFactor = Math.max(0.1, remainingDistance / (finalPosition * 0.1))
+        scrollDelta *= slowdownFactor
+      }
+      
+      // 计算新位置
+      let newPosition = currentPositionRef.current + scrollDelta
+      
+      // 限制位置范围
+      newPosition = Math.max(0, Math.min(finalPosition, newPosition))
+      
+      // 如果非常接近最终位置，直接设置为最终位置
+      if (finalPosition - newPosition < 2 && direction > 0) {
+        newPosition = finalPosition
+        setProgress(100)
+      } else {
+        // 计算进度
+        const progressPercentage = (newPosition / finalPosition) * 100
+        setProgress(progressPercentage)
+      }
+      
+      // 使用Lenis平滑滚动到新位置
+      lenisRef.current.scrollTo(newPosition, { immediate: true })
+      
+      // 更新当前位置和ref
+      setCurrentPosition(newPosition)
+      currentPositionRef.current = newPosition
+      
+      // 更新提词器位置
+      if (prompterRef.current) {
+        prompterRef.current.style.transform = `translateY(calc(25vh - ${newPosition}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
+      }
+    }
+
+    const container = containerRef.current
+    if (container) {
+      container.addEventListener('wheel', handleWheel, { passive: false })
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener('wheel', handleWheel)
+      }
+    }
+  }, [isMirrored, isVerticalMirrored])
+
+  // 文本拖动功能
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      // 如果点击的是控制条、进度条或按钮，不处理点击事件
+      if (e.target instanceof Element && 
+          (e.target.closest('.controls-container') || 
+           e.target.closest('.progress-bar-container') ||
+           e.target.closest('button'))) {
+        return
+      }
+      
+      // 如果已经滚动到最后，不允许进一步拖动
+      const finalPosition = calculateFinalPosition()
+      if (currentPositionRef.current >= finalPosition * 0.99) {
+        return
+      }
+      
       setIsDraggingText(true)
       setDragStartY(e.clientY)
-      setDragStartPosition(currentPosition)
+      setDragStartPosition(currentPositionRef.current)
     }
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDraggingText || dragStartY === null || dragStartPosition === null) return
       
       const deltaY = dragStartY - e.clientY
-      const newPosition = Math.max(0, dragStartPosition + deltaY)
+      
+      if (!prompterRef.current || !containerRef.current || !lenisRef.current) return
+      
+      const finalPosition = calculateFinalPosition()
+      
+      // 计算初步拖动位置
+      let newPosition = dragStartPosition + deltaY
+      
+      // 如果接近结束位置，应用平滑减速
+      if (newPosition > finalPosition * 0.9) {
+        // 计算距离完成的比例
+        const remainingDistance = finalPosition - newPosition
+        const slowdownFactor = Math.max(0.2, remainingDistance / (finalPosition * 0.1))
+        
+        // 应用减速
+        newPosition = dragStartPosition + (deltaY * slowdownFactor)
+      }
+      
+      // 限制拖动范围
+      newPosition = Math.max(0, Math.min(finalPosition, newPosition))
+      
+      // 如果非常接近最终位置，直接设置为最终位置
+      if (finalPosition - newPosition < 5 && deltaY > 0) {
+        newPosition = finalPosition
+        setProgress(100)
+      } else {
+        // 计算进度
+        const progressPercentage = (newPosition / finalPosition) * 100
+        setProgress(progressPercentage)
+      }
+      
+      // 使用Lenis平滑滚动到新位置
+      lenisRef.current.scrollTo(newPosition, { immediate: true })
+      
+      // 更新当前位置和ref
       setCurrentPosition(newPosition)
-
-      if (prompterRef.current && containerRef.current) {
-        const prompterHeight = prompterRef.current.scrollHeight
-        const containerHeight = containerRef.current.clientHeight
-        const maxScroll = prompterHeight - containerHeight
-        setProgress((newPosition / maxScroll) * 100)
+      currentPositionRef.current = newPosition
+      
+      // 更新提词器位置
+      if (prompterRef.current) {
+        prompterRef.current.style.transform = `translateY(calc(25vh - ${newPosition}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
       }
     }
 
@@ -572,7 +825,7 @@ export default function PrompterPage() {
         window.removeEventListener('mouseup', handleMouseUp)
       }
     }
-  }, [isDraggingText, dragStartY, dragStartPosition, currentPosition])
+  }, [isDraggingText, dragStartY, dragStartPosition, isMirrored, isVerticalMirrored])
 
   // 优化触摸事件处理
   useEffect(() => {
@@ -584,20 +837,31 @@ export default function PrompterPage() {
     let isTouching = false
 
     const handleTouchStart = (e: TouchEvent) => {
-      if (e.target instanceof HTMLButtonElement || 
-          e.target instanceof HTMLDivElement && e.target.closest('.controls-container')) {
+      // 如果点击的是控制条或其子元素，不处理触摸事件
+      if (e.target instanceof Element && 
+          (e.target.closest('.controls-container') || 
+           e.target.closest('.progress-bar-container') ||
+           e.target.closest('button'))) {
         return
       }
+      
+      const finalPosition = calculateFinalPosition()
+      
+      // 如果已经滚动到最后，不允许进一步触摸滚动
+      if (currentPositionRef.current >= finalPosition * 0.99) {
+        return
+      }
+      
       isTouching = true
       initialTouchY = e.touches[0].clientY
       lastTouchY = initialTouchY
-      initialPosition = currentPosition
+      initialPosition = currentPositionRef.current
       lastTimestamp = performance.now()
       velocity = 0
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isTouching) return
+      if (!isTouching || !lenisRef.current) return
       e.preventDefault()
       
       const currentTouchY = e.touches[0].clientY
@@ -605,19 +869,53 @@ export default function PrompterPage() {
       const deltaTime = currentTimestamp - lastTimestamp
       
       if (deltaTime > 0) {
+        // 计算速度（像素/毫秒）
         velocity = (lastTouchY - currentTouchY) / deltaTime
       }
       
+      // 计算触摸移动距离
       const deltaY = initialTouchY - currentTouchY
-      const newPosition = Math.max(0, initialPosition + deltaY)
       
+      if (!prompterRef.current || !containerRef.current) return
+      
+      const finalPosition = calculateFinalPosition()
+      
+      // 计算新位置
+      let newPosition = initialPosition + deltaY
+      
+      // 如果接近结束位置，应用平滑减速
+      if (newPosition > finalPosition * 0.9) {
+        // 计算距离完成的比例
+        const remainingDistance = finalPosition - newPosition
+        const slowdownFactor = Math.max(0.2, remainingDistance / (finalPosition * 0.1))
+        
+        // 应用减速
+        newPosition = initialPosition + (deltaY * slowdownFactor)
+      }
+      
+      // 限制位置范围
+      newPosition = Math.max(0, Math.min(finalPosition, newPosition))
+      
+      // 如果非常接近最终位置，直接设置为最终位置
+      if (finalPosition - newPosition < 5 && deltaY > 0) {
+        newPosition = finalPosition
+        setProgress(100)
+      } else {
+        // 计算进度
+        const progressPercentage = (newPosition / finalPosition) * 100
+        setProgress(progressPercentage)
+      }
+      
+      // 使用Lenis平滑滚动到新位置
+      lenisRef.current.scrollTo(newPosition, { immediate: true })
+      
+      // 更新当前位置和ref
       setCurrentPosition(newPosition)
-
-      if (prompterRef.current && containerRef.current) {
-        const prompterHeight = prompterRef.current.scrollHeight
-        const containerHeight = containerRef.current.clientHeight
-        const maxScroll = prompterHeight - containerHeight
-        setProgress((newPosition / maxScroll) * 100)
+      currentPositionRef.current = newPosition
+      
+      // 更新提词器位置
+      if (prompterRef.current) {
+        prompterRef.current.style.transform = `translateY(calc(25vh - ${newPosition}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
       }
       
       lastTouchY = currentTouchY
@@ -625,30 +923,81 @@ export default function PrompterPage() {
     }
 
     const handleTouchEnd = () => {
-      if (!isTouching) return
+      if (!isTouching || !lenisRef.current) return
       isTouching = false
       
-      if (Math.abs(velocity) > 0.5) {
-        let currentVelocity = velocity
+      const finalPosition = calculateFinalPosition()
+      
+      // 如果已经滚动到最后，停止惯性滚动
+      if (currentPositionRef.current >= finalPosition * 0.99) {
+        return
+      }
+      
+      // 应用惯性滚动
+      if (Math.abs(velocity) > 0.05) {
+        let currentVelocity = velocity * 120 // 放大效果
         const decelerate = () => {
-          if (!isTouching) {
-            currentVelocity *= 0.95
+          if (isTouching) return // 如果用户再次触摸，停止惯性滚动
+          
+          // 减速因子
+          currentVelocity *= 0.95
+          
+          if (Math.abs(currentVelocity) > 0.01) {
+            // 获取当前位置
+            const currentPos = currentPositionRef.current
             
-            if (Math.abs(currentVelocity) > 0.1) {
-              setCurrentPosition(prev => {
-                const newPos = Math.max(0, prev + currentVelocity * 16)
-                if (prompterRef.current && containerRef.current) {
-                  const prompterHeight = prompterRef.current.scrollHeight
-                  const containerHeight = containerRef.current.clientHeight
-                  const maxScroll = prompterHeight - containerHeight
-                  setProgress((newPos / maxScroll) * 100)
-                }
-                return newPos
-              })
-              requestAnimationFrame(decelerate)
+            // 计算新位置
+            let newPos = currentPos + currentVelocity
+            
+            // 如果接近结束位置，应用平滑减速
+            if (newPos > finalPosition * 0.9) {
+              const remainingDistance = finalPosition - newPos
+              const slowdownFactor = Math.max(0.1, remainingDistance / (finalPosition * 0.1))
+              newPos = currentPos + (currentVelocity * slowdownFactor)
             }
+            
+            // 限制位置范围
+            newPos = Math.max(0, Math.min(finalPosition, newPos))
+            
+            // 如果非常接近最终位置，直接设置为最终位置并停止惯性滚动
+            if (finalPosition - newPos < 2 && velocity > 0) {
+              newPos = finalPosition
+              setCurrentPosition(newPos)
+              currentPositionRef.current = newPos
+              setProgress(100)
+              
+              // 更新提词器位置
+              if (prompterRef.current) {
+                prompterRef.current.style.transform = `translateY(calc(25vh - ${newPos}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
+              }
+              
+              return
+            }
+            
+            // 设置新位置
+            if (lenisRef.current) {
+              lenisRef.current.scrollTo(newPos, { immediate: true })
+            }
+            
+            // 更新状态和ref
+            setCurrentPosition(newPos)
+            currentPositionRef.current = newPos
+            
+            // 计算进度
+            const progressPercentage = (newPos / finalPosition) * 100
+            setProgress(progressPercentage)
+            
+            // 更新提词器位置
+            if (prompterRef.current) {
+              prompterRef.current.style.transform = `translateY(calc(25vh - ${newPos}px)) ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
+            }
+            
+            // 继续惯性滚动
+            requestAnimationFrame(decelerate)
           }
         }
+        
+        // 开始惯性滚动
         requestAnimationFrame(decelerate)
       }
     }
@@ -667,9 +1016,9 @@ export default function PrompterPage() {
         container.removeEventListener('touchend', handleTouchEnd)
       }
     }
-  }, [currentPosition])
+  }, [isMirrored, isVerticalMirrored, script])
 
-  // 添加镜像模式变更追踪
+  // 镜像模式变更
   useEffect(() => {
     trackEvent('mirror_mode_change', {
       horizontal: isMirrored,
@@ -679,12 +1028,12 @@ export default function PrompterPage() {
     // 确保镜像模式变化后立即应用到文本上
     if (prompterRef.current) {
       // 获取当前的位置信息
-      const currentTransform = prompterRef.current.style.transform;
-      const translateYMatch = currentTransform.match(/translateY\([^)]+\)/);
-      const translateY = translateYMatch ? translateYMatch[0] : 'translateY(33vh)';
+      const currentTransform = prompterRef.current.style.transform
+      const translateYMatch = currentTransform.match(/translateY\([^)]+\)/)
+      const translateY = translateYMatch ? translateYMatch[0] : 'translateY(25vh)'
       
       // 应用新的变换，保持原有的位置信息
-      prompterRef.current.style.transform = `${translateY} ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`;
+      prompterRef.current.style.transform = `${translateY} ${isMirrored ? 'scaleX(-1)' : ''} ${isVerticalMirrored ? 'scaleY(-1)' : ''}`
     }
   }, [isMirrored, isVerticalMirrored])
 
@@ -729,6 +1078,7 @@ export default function PrompterPage() {
 
   return (
     <div className="container mx-auto p-2 sm:p-4">
+      <h1 className="sr-only">提词器编辑器</h1>
       <Tabs defaultValue="edit" className={cn(
         "w-full",
         isLandscape && isMobile && "hidden"
@@ -800,8 +1150,8 @@ export default function PrompterPage() {
             ) : (
               <>
                 {/* 提示条 - 始终显示 */}
-                <div className="absolute left-0 right-0 top-[33vh] h-16 bg-black/5 pointer-events-none z-10" />
-                <div className="absolute left-0 right-0 top-[33vh] border-t-2 border-black/30 pointer-events-none z-10" />
+                <div className="absolute left-0 right-0 top-[25vh] h-16 bg-black/5 pointer-events-none z-10" />
+                <div className="absolute left-0 right-0 top-[25vh] border-t-2 border-black/30 pointer-events-none z-10" />
 
                 {/* 文本容器 */}
                 <div
@@ -814,12 +1164,14 @@ export default function PrompterPage() {
                   style={{
                     fontSize: `${fontSize}px`,
                     lineHeight: lineHeight,
-                    transform: 'translateY(33vh)',
+                    transform: 'translateY(25vh)',
                     color: "#000000",
                     backgroundColor: "#ffffff",
                     wordBreak: "break-word",
                     whiteSpace: "pre-wrap",
                     fontFamily: "system-ui, -apple-system, sans-serif",
+                    padding: "32px 16px", // 确保文本有足够的上下padding
+                    paddingBottom: "100vh" // 添加非常大的底部padding确保最后一行可以滚动到视图中央
                   }}
                 >
                   {script}
@@ -898,6 +1250,14 @@ export default function PrompterPage() {
                           >
                             <ChevronUp className={cn("h-3 w-3 sm:h-4 sm:w-4", isMobile && "h-4 w-4")} />
                           </Button>
+                        </div>
+                        {/* 时间预估显示 */}
+                        <div className="flex items-center ml-2">
+                          <Clock className={cn("h-3 w-3 sm:h-4 sm:w-4 mr-1 text-muted-foreground", isMobile && "h-4 w-4")} />
+                          <span className={cn(
+                            "text-[10px] sm:text-xs text-muted-foreground",
+                            isMobile && "text-xs"
+                          )}>{formatTime(estimatedTime)}</span>
                         </div>
                       </div>
 
@@ -1044,7 +1404,7 @@ export default function PrompterPage() {
 
                     {/* Interactive progress bar */}
                     <div
-                      className="mt-2 sm:mt-3 h-1 sm:h-2 w-full bg-secondary rounded-full overflow-hidden cursor-pointer"
+                      className="progress-bar-container mt-2 sm:mt-3 h-1 sm:h-2 w-full bg-secondary rounded-full overflow-hidden cursor-pointer"
                       onClick={handleProgressBarClick}
                       onMouseDown={handleProgressBarDragStart}
                     >
