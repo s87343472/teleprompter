@@ -14,7 +14,6 @@ export default function Header() {
     { name: t('common.home'), href: '/' },
     { name: t('common.prompter'), href: '/prompter' },
     { name: t('common.history'), href: '/history' },
-    { name: t('common.comments') || '留言', href: '/comments' },
     { name: t('common.settings'), href: '/settings' },
   ]
 

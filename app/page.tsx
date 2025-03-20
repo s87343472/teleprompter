@@ -11,9 +11,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Presentation, Video, GraduationCap, Languages, Mic2, Radio, MessageSquare } from "lucide-react"
+import { Presentation, Video, GraduationCap, Languages, Mic2, Radio } from "lucide-react"
 import Image from "next/image"
-import { Comments } from "./components/comments/comments"
 
 export default function Home() {
   const { t } = useI18n()
@@ -158,7 +157,7 @@ export default function Home() {
       </div>
 
       {/* 用户评价部分 */}
-      <div className="mt-24">
+      <div className="mt-24 mb-16">
         <h2 className="text-3xl font-semibold text-center mb-12">
           {t('home.testimonials.title')}
         </h2>
@@ -178,33 +177,6 @@ export default function Home() {
               <p className="text-muted-foreground">{testimonial.content}</p>
             </Card>
           ))}
-        </div>
-      </div>
-
-      {/* 用户评论区 */}
-      <div className="mt-24 mb-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-semibold">
-            {t('home.comments.title')}
-          </h2>
-          <p className="text-muted-foreground mt-2">
-            {t('home.comments.description')}
-          </p>
-        </div>
-        
-        <div className="max-w-4xl mx-auto">
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-primary" />
-                <h3 className="text-xl font-medium">{t('home.comments.latestComments')}</h3>
-              </div>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/comments">{t('home.comments.viewAll')}</Link>
-              </Button>
-            </div>
-            <Comments />
-          </Card>
         </div>
       </div>
     </div>
