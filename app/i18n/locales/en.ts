@@ -13,6 +13,7 @@ export const en = {
     settings: "Settings",
     history: "History",
     home: "Home",
+    comments: "Comments",
   },
   footer: {
     rights: "All rights reserved",
@@ -117,6 +118,12 @@ export const en = {
         role: "Content Creator",
         content: "As a content creator producing multiple videos weekly, Teleprompter Today has significantly boosted my efficiency. The history feature and quick editing are fantastic. Cross-device sync lets me rehearse on mobile and record on desktop seamlessly."
       }
+    },
+    comments: {
+      title: "User Comments",
+      description: "View user feedback or share your experience",
+      latestComments: "Latest Comments",
+      viewAll: "View All"
     }
   },
   editor: {
@@ -161,12 +168,8 @@ export const en = {
   },
   settings: {
     title: "Settings",
-    theme: {
-      title: "Theme",
-      light: "Light",
-      dark: "Dark",
-      system: "System",
-    },
+    general: "General",
+    appearance: "Appearance",
     language: {
       title: "Language",
       en: "English",
@@ -263,4 +266,30 @@ export const en = {
     emptyScript: "Empty Script",
     emptyScriptDescription: "Please enter some text before saving",
   },
+  comments: {
+    title: "Comments",
+    viewComments: "View Comments",
+    addComment: "Add Comment",
+    welcome: "Welcome to leave a comment",
+    welcomeDescription: "Share your experience and suggestions about the teleprompter.",
+    userName: "Username",
+    email: "Email",
+    emailPrivacy: "Your email will not be displayed publicly",
+    comment: "Comment",
+    commentPlaceholder: "Share your thoughts...",
+    submit: "Submit Comment",
+    submitting: "Submitting...",
+    verification: "Please complete the verification",
+    verificationFailed: "Verification failed",
+    submitFailed: "Submission failed",
+    commentSubmitted: "Comment Submitted",
+    thankYou: "Thank you for your feedback!",
+    loadMore: "Load More",
+    noComments: "No comments yet",
+    beTheFirst: "Be the first to comment",
+    required: "Required field",
+    invalidEmail: "Invalid email address",
+    commentTooShort: "Comment is too short",
+    loading: "Loading..."
+  }
 } as const 

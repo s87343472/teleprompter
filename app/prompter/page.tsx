@@ -31,6 +31,7 @@ import { useI18n } from "@/app/i18n/context"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import Lenis from 'lenis'
+import { Comments } from "@/app/components/comments/comments"
 
 // 添加 gtag 类型定义
 declare global {
@@ -1454,6 +1455,7 @@ export default function PrompterPage() {
           )}
         </TabsContent>
       </Tabs>
+      <Comments />
     </div>
   )
 }

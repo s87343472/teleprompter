@@ -1,0 +1,62 @@
+[
+  {
+    "id": "89c72a1f-5d10-4e43-8b7c-2a4f07d5e86c",
+    "name": "Thomas Wilson",
+    "comment": "I've been using Teleprompter Today for my YouTube channel and it's a game-changer! The smooth scrolling and speed adjustment are perfect. I especially like how I can use my keyboard to control everything while recording. One suggestion: could you add a feature to import scripts directly from Google Docs?",
+    "createdAt": "2023-11-22T14:36:12.000Z"
+  },
+  {
+    "id": "3c7d45e0-9f12-4b89-b567-3a2c98df4e21",
+    "name": "王五",
+    "comment": "简洁易用，非常棒！我在直播时一直在用这个工具，镜像功能很实用，可以完美配合我的提词器设备。建议未来版本增加对不同字体的支持，以及暗色主题，因为长时间使用白底黑字会有点刺眼。",
+    "createdAt": "2023-11-15T09:45:40.000Z"
+  },
+  {
+    "id": "2a5b83c0-1d45-4f67-9a34-7e8b12cd5f89",
+    "name": "李四",
+    "comment": "我作为一名演讲培训师，每周都会使用这个提词器工具。对我来说最有价值的功能是可以调整行距和字体大小，这样我的学生们可以根据自己的阅读习惯进行调整。不过我发现在iPad上使用时，全屏模式有时会有些卡顿，希望能优化一下移动设备上的性能。",
+    "createdAt": "2023-11-18T14:22:15.000Z"
+  },
+  {
+    "id": "d67f1e8c-0a34-49b1-b6c8-e4d5f7a9c012",
+    "name": "Emma Johnson",
+    "comment": "This tool has become essential for my podcast recordings. The ability to mark specific sections with different formats would be incredibly useful. For example, I'd love to highlight questions in bold and notes in italics. Otherwise, it's been working flawlessly for the past month.",
+    "createdAt": "2023-11-25T10:15:42.000Z"
+  },
+  {
+    "id": "1e9c83a0-4c72-4f53-8c47-2d0c97af7f60",
+    "name": "张三",
+    "comment": "这个提词器太好用了！最近的更新让滚动功能变得更加流畅，实时调整速度也很方便。我主要用它来录制教学视频，比起传统的提词器软件要简单直观得多。有一个小建议：是否可以增加文本分段标记功能？这样就能在录制时知道应该在哪里停顿。",
+    "createdAt": "2023-11-20T08:15:30.000Z"
+  },
+  {
+    "id": "4f8e6b2a-c579-4d31-9e82-1a7b439c5d0f",
+    "name": "Carlos Rodriguez",
+    "comment": "As a non-native English speaker, I find this tool incredibly helpful for practicing presentations. One thing I'd recommend is adding a feature to highlight the current word or phrase being read, similar to karaoke-style text. It would help me focus on pronunciation while maintaining a natural pace.",
+    "createdAt": "2023-12-01T17:28:05.000Z"
+  },
+  {
+    "id": "5a2bc943-6f81-42d8-9c5e-1b7f8e9a4d3b",
+    "name": "林小美",
+    "comment": "我在准备演讲比赛时使用了这个工具，效果非常好！特别喜欢可以在预览状态下编辑文本的功能，让我能够边调整内容边看效果。希望能增加一个计时功能，这样就能更好地把控演讲时间了。总的来说，这是我用过的最好的在线提词器，感谢开发团队！",
+    "createdAt": "2023-12-05T09:12:18.000Z"
+  },
+  {
+    "id": "b7c9e5a2-3d48-4f61-a9c7-0e8d2b5f4a3c",
+    "name": "Sarah Miller",
+    "comment": "I've been using Teleprompter Today for my university lectures and it's made a huge difference in my delivery. The ability to save multiple scripts and access them quickly is fantastic. One issue I've encountered is that very long scripts (30+ minutes) sometimes cause slight performance issues. If that could be optimized, this would be absolutely perfect!",
+    "createdAt": "2023-12-10T11:45:33.000Z"
+  },
+  {
+    "id": "9e7d5c3b-1a6f-4d8c-9b5a-3e7f1c8d9a6b",
+    "name": "赵明",
+    "comment": "作为一名新闻主播，我需要一个稳定可靠的提词器，这个工具满足了我所有的专业需求。镜像显示功能特别实用，滚动速度的微调也很精准。最喜欢的是键盘快捷键控制，让我可以在不中断播报的情况下调整速度。唯一的建议是增加对多人对话稿件的支持，比如不同角色用不同颜色显示。",
+    "createdAt": "2023-12-15T16:20:45.000Z"
+  },
+  {
+    "id": "2d4e6f8a-9c1b-4d3e-8f5a-7b9c1d3e5f7a",
+    "name": "David Chen",
+    "comment": "I use this for both English and Chinese content creation, and the bilingual support is excellent. The auto-save feature has saved me several times when my browser crashed. I would love to see a mobile app version of this in the future. Overall, great job on creating such a useful tool!",
+    "createdAt": "2023-12-18T13:30:22.000Z"
+  }
+] 

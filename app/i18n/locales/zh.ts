@@ -13,6 +13,7 @@ export const zh = {
     settings: "设置",
     history: "历史",
     home: "首页",
+    comments: "留言板",
   },
   footer: {
     rights: "保留所有权利",
@@ -117,6 +118,12 @@ export const zh = {
         role: "视频创作者",
         content: "身为一名内容创作者，我每周要录制多个视频。Teleprompter Today 帮我显著提升了效率，特别是它的历史记录和快速编辑功能。跨设备同步让我在手机上预演，电脑上正式录制，工作流程非常顺畅。"
       }
+    },
+    comments: {
+      title: "用户评论",
+      description: "查看用户反馈或分享您的体验",
+      latestComments: "最新评论",
+      viewAll: "查看全部"
     }
   },
   editor: {
@@ -161,16 +168,18 @@ export const zh = {
   },
   settings: {
     title: "设置",
+    general: "常规",
+    appearance: "外观",
+    language: {
+      title: "语言",
+      en: "英文",
+      zh: "中文",
+    },
     theme: {
       title: "主题",
       light: "亮色",
       dark: "暗色",
       system: "跟随系统",
-    },
-    language: {
-      title: "语言",
-      en: "英文",
-      zh: "中文",
     },
     fontSize: {
       title: "默认字体大小",
@@ -267,4 +276,30 @@ export const zh = {
     emptyScript: "空脚本",
     emptyScriptDescription: "请先输入文本内容再保存",
   },
+  comments: {
+    title: "留言板",
+    viewComments: "查看评论",
+    addComment: "添加评论",
+    welcome: "欢迎留言",
+    welcomeDescription: "分享您对提词器的使用体验和建议。",
+    userName: "用户名",
+    email: "电子邮箱",
+    emailPrivacy: "您的邮箱不会被公开显示",
+    comment: "评论内容",
+    commentPlaceholder: "分享您的想法...",
+    submit: "提交评论",
+    submitting: "提交中...",
+    verification: "请完成人机验证",
+    verificationFailed: "验证失败",
+    submitFailed: "提交失败",
+    commentSubmitted: "评论已提交",
+    thankYou: "感谢您的反馈！",
+    loadMore: "加载更多",
+    noComments: "暂无评论",
+    beTheFirst: "成为第一个评论的人",
+    required: "必填字段",
+    invalidEmail: "无效的电子邮件地址",
+    commentTooShort: "评论太短",
+    loading: "加载中..."
+  }
 } as const 
